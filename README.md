@@ -80,3 +80,7 @@ VITE_ELEVENLABS_AGENT_ID=your-elevenlabs-agent-id
     Open your browser to the URL shown (usually `http://localhost:5173`).
 
 3.  **Start Interview**: Click "Start Session" and begin talking!
+
+## Deployment
+
+For instructions on how to deploy the backend to Google Cloud Run with GitHub integration, please see [DEPLOYMENT.md](./DEPLOYMENT.md).
