@@ -26,55 +26,88 @@ else:
 
 app = FastAPI()
 
-class ChatRequest(BaseModel):
-    # This structure depends on what the ElevenLabs Agent sends. 
-    # Usually it might send the full conversation history.
-    # For now, we'll accept a flexible input.
-    text: str
-    conversation_id: Optional[str] = None
-    history: Optional[List[dict]] = [] # List of {"role": "user"|"model", "content": "..."}
+import time
+import uuid
 
-class ChatResponse(BaseModel):
-    response: str
+class Message(BaseModel):
+    role: str
+    content: str
 
-@app.get("/")
-def health_check():
-    return {"status": "ok", "service": "Memoria Brain"}
+class ChatCompletionRequest(BaseModel):
+    model: str = "gpt-3.5-turbo" # Default, ignored by us as we use Gemini
+    messages: List[Message]
+    temperature: Optional[float] = 0.7
 
-@app.post("/chat", response_model=ChatResponse)
-async def chat_endpoint(request: ChatRequest):
+@app.post("/chat/completions")
+async def chat_completions(request: ChatCompletionRequest):
     """
-    Receives input from the ElevenLabs Agent and generates a response using Gemini.
+    Mimics the OpenAI Chat Completions API.
+    ElevenLabs will send the conversation history here.
     """
     if not model:
         raise HTTPException(status_code=500, detail="Vertex AI not configured.")
 
-    print(f"Received request: {request}")
+    print(f"Received completion request with {len(request.messages)} messages")
 
     try:
-        # Construct the prompt history for Gemini
-        # We want to act as an empathetic interviewer.
+        # 1. Parse Messages
+        # Extract system prompt if present
+        system_instruction = "You are Memoria, an empathetic AI biographer."
+        history = []
         
-        system_instruction = """
-        You are Memoria, an empathetic AI biographer. 
-        Your goal is to interview the user to preserve their life stories.
-        Ask warm, open-ended questions. 
-        Listen carefully to their answers.
-        Ask relevant follow-up questions based on what they just said to dig deeper.
-        Keep your responses concise and conversational (suitable for voice).
-        Do not produce long monologues.
-        """
+        for msg in request.messages:
+            if msg.role == "system":
+                system_instruction = msg.content
+            elif msg.role == "user":
+                history.append({"role": "user", "parts": [msg.content]})
+            elif msg.role == "assistant":
+                history.append({"role": "model", "parts": [msg.content]})
+
+        # 2. Configure Gemini with the specific system prompt for this turn
+        # Note: In a real prod app, recreating the model object might be expensive; 
+        # normally you'd pass system_instruction to generate_content or use a cached model.
+        # For simplicity/correctness with Vertex, we'll strip the system prompt from history 
+        # and rely on the global model or re-instantiate if dynamic system prompt is critical.
+        # Vertex AI's GenerativeModel is lightweight to instantiate.
         
-        # Simple stateless interaction for now, or use history if provided
-        # For better context, we should maintain history. 
-        # Here we assume 'history' passed from client or we reconstruct it.
+        current_model = GenerativeModel(
+            MODEL_NAME, 
+            system_instruction=[system_instruction]
+        )
         
-        chat = model.start_chat()
+        # 3. Generate Response
+        # We use the history to start a chat and send the last message? 
+        # Or just pass the whole history to generate_content?
+        # ChatSession is easier for managing the alternating turns.
         
-        # Send message
-        response = chat.send_message(f"{system_instruction}\n\nUser: {request.text}")
+        chat = current_model.start_chat(history=history[:-1] if history else [])
         
-        return ChatResponse(response=response.text)
+        # The last message is the user's new input
+        last_message = history[-1]['parts'][0] if history and history[-1]['role'] == 'user' else "Continue"
+        
+        response = chat.send_message(last_message)
+        response_text = response.text
+
+        # 4. Format Response as OpenAI API
+        return {
+            "id": f"chatcmpl-{uuid.uuid4()}",
+            "object": "chat.completion",
+            "created": int(time.time()),
+            "model": "memoria-gemini",
+            "choices": [{
+                "index": 0,
+                "message": {
+                    "role": "assistant",
+                    "content": response_text
+                },
+                "finish_reason": "stop"
+            }],
+            "usage": {
+                "prompt_tokens": 0, # Placeholder
+                "completion_tokens": 0,
+                "total_tokens": 0
+            }
+        }
 
     except Exception as e:
         logging.error(f"Error calling Vertex AI: {e}")
