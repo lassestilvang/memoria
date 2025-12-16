@@ -1,0 +1,25 @@
+steps:
+  # 1. Build the container image
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', 'gcr.io/$PROJECT_ID/memoria-backend', './backend']
+
+  # 2. Push the container image to Container Registry (or Artifact Registry)
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/memoria-backend']
+
+  # 3. Deploy container to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - 'memoria-brain'
+      - '--image'
+      - 'gcr.io/$PROJECT_ID/memoria-backend'
+      - '--region'
+      - 'us-central1'
+      - '--platform'
+      - 'managed'
+      - '--allow-unauthenticated' # Allow public access so ElevenLabs can reach it
+images:
+  - 'gcr.io/$PROJECT_ID/memoria-backend'
