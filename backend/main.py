@@ -5,7 +5,7 @@ from typing import List, Optional
 from fastapi import FastAPI, HTTPException, Request
 from pydantic import BaseModel
 import vertexai
-from vertexai.generative_models import GenerativeModel, ChatSession
+from vertexai.generative_models import GenerativeModel, ChatSession, Content, Part
 
 # Load environment variables
 from dotenv import load_dotenv
@@ -14,7 +14,7 @@ load_dotenv()
 # Configuration
 PROJECT_ID = os.getenv("GOOGLE_CLOUD_PROJECT")
 LOCATION = os.getenv("GOOGLE_CLOUD_LOCATION", "us-central1")
-MODEL_NAME = "gemini-1.5-flash-001" 
+MODEL_NAME = "gemini-2.5-flash-lite" 
 
 # Initialize Vertex AI
 if PROJECT_ID:
@@ -59,9 +59,9 @@ async def chat_completions(request: ChatCompletionRequest):
             if msg.role == "system":
                 system_instruction = msg.content
             elif msg.role == "user":
-                history.append({"role": "user", "parts": [msg.content]})
+                history.append(Content(role="user", parts=[Part.from_text(msg.content)]))
             elif msg.role == "assistant":
-                history.append({"role": "model", "parts": [msg.content]})
+                history.append(Content(role="model", parts=[Part.from_text(msg.content)]))
 
         # 2. Configure Gemini with the specific system prompt for this turn
         # Note: In a real prod app, recreating the model object might be expensive; 
@@ -83,7 +83,7 @@ async def chat_completions(request: ChatCompletionRequest):
         chat = current_model.start_chat(history=history[:-1] if history else [])
         
         # The last message is the user's new input
-        last_message = history[-1]['parts'][0] if history and history[-1]['role'] == 'user' else "Continue"
+        last_message = history[-1].parts[0].text if history and history[-1].role == 'user' else "Continue"
         
         response = chat.send_message(last_message)
         response_text = response.text
