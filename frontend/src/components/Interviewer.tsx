@@ -135,65 +135,82 @@ export const Interviewer: React.FC = () => {
     const currentTheme = eraThemes[era];
 
     return (
-        <div className={`flex flex-col lg:flex-row gap-8 max-w-6xl w-full mx-auto p-4 relative min-h-screen transition-colors duration-1000 ${currentTheme}`}>
+        <div className={`flex flex-col lg:flex-row gap-8 max-w-7xl w-full mx-auto p-4 md:p-8 relative min-h-screen transition-all duration-1000 ${currentTheme}`}>
             {/* Main Interviewer Card */}
-            <div className={`premium-card p-10 md:p-16 flex flex-col items-center space-y-12 flex-1 transition-all duration-500 
-                ${showSummary ? 'opacity-20 blur-sm pointer-events-none' : 'opacity-100'}`}>
+            <div className={`glass-card p-8 md:p-16 flex flex-col items-center space-y-12 flex-1 relative overflow-hidden reveal-1 
+                ${showSummary ? 'opacity-20 blur-md pointer-events-none' : 'opacity-100'}`}>
+
+                {/* Decorative Elements */}
+                <div className="absolute top-0 right-0 w-64 h-64 bg-gold/5 blur-[100px] rounded-full -mr-32 -mt-32" />
+                <div className="absolute bottom-0 left-0 w-64 h-64 bg-blue-500/5 blur-[100px] rounded-full -ml-32 -mb-32" />
 
                 {/* Visual Voice Feedback */}
-                <div className="relative">
+                <div className="relative reveal-2">
                     {isConnected && (
-                        <div className="absolute inset-0 bg-blue-400/20 rounded-full animate-voice-pulse scale-150" />
+                        <div className="absolute inset-0 bg-gold/20 rounded-full animate-voice-pulse scale-125" />
                     )}
-                    <div className={`w-48 h-48 rounded-full flex items-center justify-center transition-all duration-700 z-10 relative 
-                        ${isConnected ? 'bg-blue-600 shadow-2xl scale-110' : 'bg-slate-200'}`}>
+                    <div className={`w-40 h-40 md:w-56 md:h-56 rounded-full flex items-center justify-center transition-all duration-700 z-10 relative 
+                        ${isConnected ? 'bg-gradient-to-br from-gold to-gold-light shadow-2xl scale-105' : 'bg-white/5 border border-white/10'}`}>
                         <svg xmlns="http://www.w3.org/2000/svg"
-                            className={`h-24 w-24 transition-colors duration-500 ${isConnected ? 'text-white' : 'text-slate-400'}`}
+                            className={`h-20 w-20 md:h-28 md:w-28 transition-all duration-500 ${isConnected ? 'text-midnight translate-y-[-2px]' : 'text-white/20'}`}
                             fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
                         </svg>
                     </div>
                 </div>
 
-                <div className="text-center space-y-6">
-                    <h2 className="text-4xl font-bold text-slate-900">
-                        {isConnected ? 'I am listening' : 'Ready to talk?'}
+                <div className="text-center space-y-6 reveal-3">
+                    <h2 className="text-4xl md:text-5xl font-display text-gradient">
+                        {isConnected ? 'Speaking with Memoria' : 'Ready to share?'}
                     </h2>
-                    <p className="text-2xl text-slate-500 font-medium leading-relaxed max-w-md">
+                    <p className="text-xl md:text-2xl text-silver/60 font-light leading-relaxed max-w-lg mx-auto">
                         {isConnected
                             ? (isSpeaking ? 'Agent is speaking...' : 'It is your turn to speak.')
-                            : 'Tap the button below whenever you are ready to share a memory.'}
+                            : 'Memoria is here to listen and preserve your most precious life stories.'}
                     </p>
                 </div>
 
-                <div className="w-full pt-4 space-y-4">
+                <div className="w-full pt-4 space-y-6 reveal-3">
                     {!import.meta.env.VITE_ELEVENLABS_AGENT_ID && (
                         <input
                             type="text"
                             placeholder="Paste Agent ID here"
                             value={agentId}
                             onChange={(e) => setAgentId(e.target.value)}
-                            className="w-full mb-4 px-6 py-4 border-2 border-slate-100 rounded-2xl text-xl focus:border-blue-500 outline-none transition-all"
+                            className="input-field w-full"
                         />
                     )}
 
-                    <div className="flex gap-4">
+                    <div className="flex flex-col sm:flex-row gap-6">
                         <button
                             onClick={isConnected ? stopConversation : startConversation}
-                            className={`senior-button flex-[2] shadow-2xl shadow-blue-500/20 
+                            className={`premium-button flex-[3] text-xl 
                                 ${isConnected
-                                    ? 'bg-rose-500 hover:bg-rose-600 text-white'
-                                    : 'bg-blue-600 hover:bg-blue-700 text-white'
+                                    ? 'bg-rose-500/10 border border-rose-500/30 text-rose-500 hover:bg-rose-500/20'
+                                    : 'button-primary'
                                 }`}
                         >
-                            {isConnected ? 'End Session' : 'Start Session'}
+                            {isConnected ? (
+                                <>
+                                    <span className="w-2 h-2 bg-rose-500 rounded-full animate-pulse" />
+                                    End Session
+                                </>
+                            ) : (
+                                <>
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    Begin Interview
+                                </>
+                            )}
                         </button>
 
-                        <label className={`senior-button flex-1 bg-white border-4 border-slate-100 text-slate-400 hover:text-blue-600 hover:border-blue-100 cursor-pointer flex items-center justify-center transition-all 
-                            ${isConnected ? 'opacity-100' : 'opacity-50 pointer-events-none'}`}>
+                        <label className={`premium-button flex-1 button-secondary cursor-pointer
+                            ${isConnected ? 'opacity-100 hover:scale-105' : 'opacity-20 pointer-events-none'}`}>
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
                             </svg>
                             <input
                                 type="file"
@@ -225,97 +242,122 @@ export const Interviewer: React.FC = () => {
                 </div>
 
                 {error && (
-                    <div className="text-xl font-medium text-center text-rose-600 mt-6 p-6 bg-rose-50 rounded-2xl border border-rose-100 animate-pulse">
+                    <div className="w-full text-lg font-medium text-center text-rose-400 p-6 bg-rose-500/10 border border-rose-500/20 rounded-2xl animate-in zoom-in-95 duration-300">
                         {error}
                     </div>
                 )}
 
-                <div className="w-full space-y-4 pt-6 mt-6 border-t border-slate-100">
-                    <p className="text-slate-400 font-bold text-center uppercase tracking-widest text-xs">Family Guidance</p>
+                <div className="w-full space-y-4 pt-8 mt-4 border-t border-white/5 reveal-3">
+                    <p className="text-white/30 font-bold text-center uppercase tracking-[0.2em] text-[10px]">Family Guidance</p>
                     <div className="flex gap-4">
                         <input
                             type="text"
                             value={seed}
                             onChange={(e) => setSeed(e.target.value)}
-                            placeholder="Add a topic (e.g. 'Ask about the 1968 town dance')"
-                            className="flex-1 p-5 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-blue-500 text-lg placeholder:text-slate-400"
+                            placeholder="Add a topic (e.g. 'Ask about meeting Maria')"
+                            className="input-field flex-1"
                         />
                         <button
                             onClick={handleAddSeed}
-                            className="px-8 bg-blue-100 text-blue-600 rounded-2xl font-black hover:bg-blue-200 transition-colors uppercase tracking-tight text-sm"
+                            className="px-6 bg-white/5 border border-white/10 rounded-2xl font-bold hover:bg-gold hover:text-midnight transition-all active:scale-90"
                         >
-                            Add
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                            </svg>
                         </button>
                     </div>
                 </div>
 
-                <div className="text-sm font-bold tracking-widest uppercase text-slate-300">
+                <div className="text-[10px] font-bold tracking-[0.3em] uppercase text-white/10">
                     Connection: {status}
                 </div>
             </div>
 
             {/* Story Map / Memories Sidebar */}
-            <div className={`premium-card p-8 w-full lg:w-96 flex flex-col transition-all duration-500 
-                ${isConnected || fragments.length > 0 ? 'opacity-100' : 'opacity-0 scale-95 pointer-events-none'}`}>
-                <div className="flex items-center justify-between mb-8">
-                    <h3 className="text-2xl font-bold text-slate-900 flex items-center">
-                        <span className="w-3 h-3 bg-blue-600 rounded-full mr-3 animate-pulse" />
-                        Live Captures
-                    </h3>
-                    <button
-                        onClick={handleExport}
-                        className="p-3 bg-slate-50 rounded-xl hover:bg-blue-50 transition-colors text-blue-600"
-                        title="Export Memoir"
-                    >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                        </svg>
-                    </button>
-                </div>
-                <div className="space-y-6 overflow-y-auto max-h-[600px] pr-2 custom-scrollbar">
-                    {fragments.length === 0 ? (
-                        <p className="text-xl text-slate-400 italic text-center mt-20">No memories captured yet...</p>
-                    ) : (
-                        fragments.map((frag, i) => (
-                            <div key={i} className={`group p-6 bg-white rounded-3xl border border-slate-100 hover:border-blue-200 transition-all duration-300 shadow-sm
-                                ${frag.category === 'Visual Memory' ? 'border-l-4 border-l-purple-500' : ''}`}>
-                                <div className="flex justify-between items-start">
-                                    <span className="text-xs font-black text-blue-600 uppercase tracking-widest">{frag.category}</span>
-                                    {frag.category === 'Visual Memory' && <span className="text-lg">📸</span>}
-                                </div>
-                                <p className="text-xl text-slate-900 font-bold leading-tight mt-2">{frag.content}</p>
-                                {frag.context && <p className="text-sm text-slate-400 mt-3 italic leading-relaxed">{frag.context}</p>}
+            <div className={`lg:w-96 flex flex-col gap-8 transition-all duration-700 reveal-2
+                ${isConnected || fragments.length > 0 ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-12 pointer-events-none'}`}>
+
+                <div className="glass-card p-8 flex-1 flex flex-col min-h-0">
+                    <div className="flex items-center justify-between mb-8">
+                        <h3 className="text-2xl font-display text-white flex items-center gap-4">
+                            <span className="relative flex h-3 w-3">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-gold opacity-75"></span>
+                                <span className="relative inline-flex rounded-full h-3 w-3 bg-gold"></span>
+                            </span>
+                            Live Feed
+                        </h3>
+                        <button
+                            onClick={handleExport}
+                            className="p-3 bg-white/5 hover:bg-gold hover:text-midnight rounded-xl transition-all duration-300 group"
+                            title="Export Digital Heirloom"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 group-hover:scale-110" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                        </button>
+                    </div>
+
+                    <div className="space-y-6 overflow-y-auto pr-2 custom-scrollbar flex-1">
+                        {fragments.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center h-full text-center space-y-4 opacity-30 px-8 py-20">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 border border-white/20 rounded-full p-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                                </svg>
+                                <p className="text-lg font-light leading-relaxed">Awaiting your first story. Everything you share is securely preserved.</p>
                             </div>
-                        ))
-                    )}
+                        ) : (
+                            fragments.map((frag, i) => (
+                                <div key={i} className={`p-6 rounded-3xl border transition-all duration-300 animate-in slide-in-from-right-8 fade-in h-fit
+                                    ${frag.category === 'Visual Memory'
+                                        ? 'bg-blue-500/10 border-blue-500/20 shadow-blue-500/5'
+                                        : 'bg-white/[0.02] border-white/5 hover:border-gold/30 shadow-xl'}`}>
+                                    <div className="flex justify-between items-start">
+                                        <span className="text-[10px] font-black text-gold uppercase tracking-[0.2em]">{frag.category}</span>
+                                        {frag.category === 'Visual Memory' && <span className="text-lg">📸</span>}
+                                    </div>
+                                    <p className="text-lg text-white font-medium leading-tight mt-3">{frag.content}</p>
+                                    {frag.context && <p className="text-xs text-silver/40 mt-3 italic leading-relaxed">{frag.context}</p>}
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </div>
+
+                {/* Legend Card */}
+                <div className="glass-card p-6 bg-gold/5 border-gold/10">
+                    <p className="text-xs text-gold/60 leading-relaxed italic">
+                        "Your legacy is the greatest gift you can leave behind. Memoria is honored to be your scribe."
+                    </p>
                 </div>
             </div>
 
             {/* Session Summary Modal */}
             {showSummary && (
-                <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 z-50 p-6">
-                    <div className="bg-white rounded-[3rem] shadow-[0_32px_64px_-12px_rgba(0,0,0,0.14)] border border-slate-100 p-12 text-center space-y-8 animate-in zoom-in duration-500">
-                        <div className="w-24 h-24 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto scale-125 mb-4">
+                <div className="absolute inset-0 z-50 p-6 flex items-center justify-center bg-midnight/80 backdrop-blur-xl">
+                    <div className="glass-card max-w-xl w-full p-12 text-center space-y-10 border-gold/30 shadow-gold/20 animate-in zoom-in-95 duration-500">
+                        <div className="w-24 h-24 bg-gold text-midnight rounded-full flex items-center justify-center mx-auto scale-125 mb-4 shadow-2xl shadow-gold/40">
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                             </svg>
                         </div>
                         <div className="space-y-4">
-                            <h2 className="text-5xl font-black text-slate-900">Wonderful stories!</h2>
-                            <p className="text-2xl text-slate-500 font-medium">We've safely stored {fragments.length} new treasures in your digital heirloom.</p>
+                            <h2 className="text-5xl md:text-6xl font-display text-gradient">Wonderful stories!</h2>
+                            <p className="text-xl md:text-2xl text-silver/60 font-light max-w-sm mx-auto">
+                                We've safely stored {fragments.length} new treasures in your digital heirloom.
+                            </p>
                         </div>
-                        <div className="flex gap-4 pt-6">
+                        <div className="flex flex-col sm:flex-row gap-4 pt-6">
                             <button
                                 onClick={startConversation}
-                                className="senior-button flex-1 bg-blue-600 text-white"
+                                className="premium-button flex-1 button-primary text-lg"
                             >
                                 Start New Session
                             </button>
                             <button
                                 onClick={() => setShowSummary(false)}
-                                className="senior-button flex-1 bg-slate-100 text-slate-600 border-none"
+                                className="premium-button flex-1 button-secondary text-lg"
                             >
-                                Close
+                                View Fragments
                             </button>
                         </div>
                     </div>

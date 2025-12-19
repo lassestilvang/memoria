@@ -69,32 +69,53 @@ export const FamilyDashboard: React.FC = () => {
         }
     };
 
-    if (loading) return <div className="text-center p-12 text-slate-400">Loading stories for review...</div>;
+    if (loading) return (
+        <div className="flex flex-col items-center justify-center p-24 space-y-8 reveal-1">
+            <div className="w-16 h-16 border-4 border-gold/20 border-t-gold rounded-full animate-spin" />
+            <p className="text-2xl font-display text-gold/60 animate-pulse">Curating your stories...</p>
+        </div>
+    );
 
     return (
-        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div className="flex items-center justify-between">
-                <h2 className="text-3xl font-bold text-slate-900 leading-tight">Review Stories</h2>
-                <span className="bg-blue-100 text-blue-600 px-4 py-1 rounded-full text-sm font-bold uppercase tracking-widest">
-                    {pending.length} Pending
-                </span>
+        <div className="space-y-12 max-w-5xl mx-auto pb-24 px-4">
+            <div className="flex flex-col md:flex-row items-center justify-between gap-6 reveal-1">
+                <div className="space-y-2 text-center md:text-left">
+                    <h2 className="text-5xl font-display text-gradient">Review Stories</h2>
+                    <p className="text-silver/40 text-lg font-light">Refine and verify the memories captured during sessions.</p>
+                </div>
+                <div className="px-6 py-2 bg-gold/10 border border-gold/20 rounded-full">
+                    <span className="text-gold font-black uppercase tracking-[0.2em] text-xs">
+                        {pending.length} Pending Approval
+                    </span>
+                </div>
             </div>
 
             {pending.length === 0 ? (
-                <div className="p-16 border-4 border-dashed border-slate-100 rounded-[3rem] text-center space-y-4">
-                    <div className="text-4xl">✨</div>
-                    <p className="text-xl text-slate-400 font-medium italic">No new stories to review right now.</p>
+                <div className="glass-card p-24 text-center space-y-8 reveal-2">
+                    <div className="text-6xl animate-float inline-block">✨</div>
+                    <div className="space-y-4">
+                        <p className="text-3xl font-display text-white">All stories are verified</p>
+                        <p className="text-xl text-silver/40 font-light max-w-md mx-auto italic">
+                            The digital heirloom is up to date. New stories will appear here after the next interview.
+                        </p>
+                    </div>
                 </div>
             ) : (
-                <div className="grid gap-6">
-                    {pending.map(frag => (
-                        <div key={frag.id} className="premium-card p-8 group hover:border-blue-200 transition-all duration-300">
-                            <div className="flex justify-between items-start mb-4">
-                                <span className="text-xs font-black text-blue-600 uppercase tracking-widest">{frag.category}</span>
-                                <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="grid gap-8">
+                    {pending.map((frag, idx) => (
+                        <div key={frag.id}
+                            className={`glass-card p-10 group transition-all duration-500 reveal-${(idx % 3) + 1}
+                                ${editingId === frag.id ? 'border-gold/50 bg-gold/5 shadow-gold/10' : ''}`}>
+
+                            <div className="flex justify-between items-start mb-8">
+                                <span className="px-4 py-1.5 bg-white/5 border border-white/10 rounded-full text-[10px] font-black text-gold uppercase tracking-[0.2em]">
+                                    {frag.category}
+                                </span>
+                                <div className="flex gap-4 opacity-0 group-hover:opacity-100 transition-all duration-300 translate-x-4 group-hover:translate-x-0">
                                     <button
                                         onClick={() => { setEditingId(frag.id); setEditContent(frag.content); }}
-                                        className="p-2 hover:bg-slate-50 text-slate-400 hover:text-blue-600 rounded-lg"
+                                        className="p-3 bg-white/5 hover:bg-gold hover:text-midnight rounded-xl transition-all"
+                                        title="Edit Story"
                                     >
                                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                                             <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
@@ -102,7 +123,8 @@ export const FamilyDashboard: React.FC = () => {
                                     </button>
                                     <button
                                         onClick={() => handleDelete(frag.id)}
-                                        className="p-2 hover:bg-rose-50 text-slate-400 hover:text-rose-600 rounded-lg"
+                                        className="p-3 bg-white/5 hover:bg-rose-500 hover:text-white rounded-xl transition-all"
+                                        title="Discard"
                                     >
                                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                                             <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
@@ -112,28 +134,41 @@ export const FamilyDashboard: React.FC = () => {
                             </div>
 
                             {editingId === frag.id ? (
-                                <div className="space-y-4">
+                                <div className="space-y-6 animate-in fade-in slide-in-from-top-4 duration-500">
                                     <textarea
                                         value={editContent}
                                         onChange={(e) => setEditContent(e.target.value)}
-                                        className="w-full p-4 bg-slate-50 border-none rounded-2xl text-xl focus:ring-2 focus:ring-blue-500 outline-none min-h-[100px]"
+                                        className="w-full p-8 bg-white/5 border border-gold/30 rounded-[2rem] text-2xl font-display text-white focus:ring-2 focus:ring-gold/50 outline-none min-h-[150px] custom-scrollbar"
+                                        autoFocus
                                     />
-                                    <div className="flex gap-2">
-                                        <button onClick={() => handleUpdate(frag.id)} className="px-6 py-2 bg-blue-600 text-white rounded-xl font-bold">Save</button>
-                                        <button onClick={() => setEditingId(null)} className="px-6 py-2 bg-slate-100 text-slate-600 rounded-xl font-bold">Cancel</button>
+                                    <div className="flex gap-4">
+                                        <button onClick={() => handleUpdate(frag.id)} className="premium-button button-primary px-12">Save Changes</button>
+                                        <button onClick={() => setEditingId(null)} className="premium-button button-secondary">Cancel</button>
                                     </div>
                                 </div>
                             ) : (
-                                <>
-                                    <p className="text-2xl text-slate-900 font-bold leading-tight mb-4">{frag.content}</p>
-                                    {frag.context && <p className="text-sm text-slate-400 italic leading-relaxed mb-6">Originally from: {frag.context}</p>}
+                                <div className="space-y-8">
+                                    <div className="space-y-4">
+                                        <p className="text-3xl md:text-4xl font-display text-white leading-tight">"{frag.content}"</p>
+                                        {frag.context && (
+                                            <p className="text-silver/40 italic flex items-center gap-3">
+                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                </svg>
+                                                {frag.context}
+                                            </p>
+                                        )}
+                                    </div>
                                     <button
                                         onClick={() => handleVerify(frag.id)}
-                                        className="w-full py-4 bg-blue-50 text-blue-600 font-black rounded-2xl hover:bg-blue-600 hover:text-white transition-all transform hover:scale-[1.02] active:scale-95 uppercase tracking-widest text-sm"
+                                        className="premium-button button-primary w-full text-lg group"
                                     >
-                                        Confirm Memory
+                                        Verify & Add to Memoir
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                                        </svg>
                                     </button>
-                                </>
+                                </div>
                             )}
                         </div>
                     ))}
