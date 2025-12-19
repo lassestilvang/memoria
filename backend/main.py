@@ -127,6 +127,8 @@ async def chat_completions(request: Request, completion_request: ChatCompletionR
         memory_context = ""
         # ... (rest of search logic)
         if existing_fragments and rag and user_query:
+            # We search among verified fragments for better context stability
+            verified_only = [f for f in existing_fragments if len(f) > 4 and f[4] == 1] # Check is_verified if present
             relevant = rag.retrieve_relevant(user_query, existing_fragments, top_k=5)
             if relevant:
                 memory_context = "\n\nRelevant memories from past conversations:\n"
@@ -135,7 +137,7 @@ async def chat_completions(request: Request, completion_request: ChatCompletionR
         elif existing_fragments:
             # Fallback if RAG fails or query is empty - take most recent or generic
             memory_context = "\n\nKnown memories about the user:\n"
-            for cat, content, ctx, _ in existing_fragments[:5]: # Just take first 5
+            for cat, content, ctx, *rest in existing_fragments[:5]: # Just take first 5
                 memory_context += f"- [{cat}]: {content} ({ctx})\n"
 
         # 1c. Sentiment Analysis (for Phase 5)
@@ -249,11 +251,11 @@ async def vision_context(request: Request):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/memories")
-async def get_memories():
+async def get_memories(verified: bool = True):
     """
-    Returns all extracted memory fragments and the detected era.
+    Returns extracted memory fragments.
     """
-    fragments = database.get_all_fragments()
+    fragments = database.get_all_fragments(verified_only=verified)
     # Simple heuristic for era if not persisted: check for dates or keywords
     era = "modern"
     for frag in fragments:
@@ -265,16 +267,41 @@ async def get_memories():
             era = "vintage"
             
     return {
-        "fragments": [{"category": f[0], "content": f[1], "context": f[2]} for f in fragments],
+        "fragments": [{"id": f[4] if len(f)>4 else None, "category": f[0], "content": f[1], "context": f[2]} for f in fragments],
         "era": era
     }
+
+@app.get("/fragments/pending")
+async def get_pending():
+    fragments = database.get_pending_fragments()
+    return [{"id": f[0], "category": f[1], "content": f[2], "context": f[3]} for f in fragments]
+
+@app.post("/fragments/{fragment_id}/verify")
+async def verify_frag(fragment_id: int):
+    database.verify_fragment(fragment_id)
+    return {"status": "Verified"}
+
+@app.patch("/fragments/{fragment_id}")
+async def patch_fragment(fragment_id: int, request: Request):
+    data = await request.json()
+    content = data.get("content")
+    category = data.get("category")
+    if not content:
+        raise HTTPException(status_code=400, detail="Content required")
+    database.update_fragment(fragment_id, content, category)
+    return {"status": "Updated"}
+
+@app.delete("/fragments/{fragment_id}")
+async def delete_frag(fragment_id: int):
+    database.delete_fragment(fragment_id)
+    return {"status": "Deleted"}
 
 @app.get("/export")
 async def export_memoir(user_name: str = "User"):
     """
-    Generates and returns a PDF memoir.
+    Generates and returns a PDF memoir from verified fragments.
     """
-    fragments = database.get_all_fragments()
+    fragments = database.get_all_fragments(verified_only=True)
     if not fragments:
         raise HTTPException(status_code=400, detail="No memories to export.")
     
