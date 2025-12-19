@@ -36,6 +36,15 @@ def init_db():
         )
     """)
     
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS memory_seeds (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            content TEXT,
+            is_used BOOLEAN DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    
     conn.commit()
     conn.close()
 
@@ -70,6 +79,21 @@ def get_all_fragments():
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute("SELECT category, content, context, embedding FROM fragments")
+    rows = cursor.fetchall()
+    conn.close()
+    return rows
+
+def save_seed(content):
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("INSERT INTO memory_seeds (content) VALUES (?)", (content,))
+    conn.commit()
+    conn.close()
+
+def get_active_seeds():
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, content FROM memory_seeds WHERE is_used = 0")
     rows = cursor.fetchall()
     conn.close()
     return rows

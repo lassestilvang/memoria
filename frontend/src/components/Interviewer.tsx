@@ -6,6 +6,14 @@ export const Interviewer: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
     const [fragments, setFragments] = useState<any[]>([]);
     const [showSummary, setShowSummary] = useState(false);
+    const [era, setEra] = useState<'modern' | 'vintage' | 'sepia'>('modern');
+    const [seed, setSeed] = useState('');
+
+    const eraThemes = {
+        modern: 'bg-slate-50',
+        vintage: 'bg-amber-50/30 sepia-25',
+        sepia: 'bg-stone-100 sepia-50'
+    };
 
     const conversation = useConversation({
         onConnect: () => {
@@ -37,7 +45,8 @@ export const Interviewer: React.FC = () => {
             const res = await fetch('http://localhost:8000/memories');
             if (res.ok) {
                 const data = await res.json();
-                setFragments(data);
+                setFragments(data.fragments || []);
+                if (data.era) setEra(data.era);
             }
         } catch (err) {
             console.error("Failed to fetch memories", err);
@@ -70,12 +79,53 @@ export const Interviewer: React.FC = () => {
         await conversation.endSession();
     };
 
+    const handleAddSeed = async () => {
+        if (!seed.trim()) return;
+        try {
+            const res = await fetch('http://localhost:8000/seeds', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ content: seed })
+            });
+            if (res.ok) {
+                setSeed('');
+                alert("Story seed added! The AI will try to bring it up.");
+            }
+        } catch (err) {
+            console.error("Failed to add seed", err);
+        }
+    };
+
+    const handleExport = async () => {
+        try {
+            const res = await fetch('http://localhost:8000/export?user_name=Lasse');
+            if (res.ok) {
+                const blob = await res.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `Memoir_Lasse_${new Date().toISOString().split('T')[0]}.pdf`;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+            } else {
+                alert("Failed to generate export");
+            }
+        } catch (err) {
+            console.error("Export failed", err);
+            alert("Export service not reachable");
+        }
+    };
+
     const status = conversation.status;
     const isConnected = status === 'connected';
     const isSpeaking = conversation.isSpeaking;
 
+    // Determine era theme
+    const currentTheme = eraThemes[era];
+
     return (
-        <div className="flex flex-col lg:flex-row gap-8 max-w-6xl w-full mx-auto p-4 relative">
+        <div className={`flex flex-col lg:flex-row gap-8 max-w-6xl w-full mx-auto p-4 relative min-h-screen transition-colors duration-1000 ${currentTheme}`}>
             {/* Main Interviewer Card */}
             <div className={`premium-card p-10 md:p-16 flex flex-col items-center space-y-12 flex-1 transition-all duration-500 
                 ${showSummary ? 'opacity-20 blur-sm pointer-events-none' : 'opacity-100'}`}>
@@ -170,6 +220,25 @@ export const Interviewer: React.FC = () => {
                     </div>
                 )}
 
+                <div className="w-full space-y-4 pt-6 mt-6 border-t border-slate-100">
+                    <p className="text-slate-400 font-bold text-center uppercase tracking-widest text-xs">Family Guidance</p>
+                    <div className="flex gap-4">
+                        <input
+                            type="text"
+                            value={seed}
+                            onChange={(e) => setSeed(e.target.value)}
+                            placeholder="Add a topic (e.g. 'Ask about the 1968 town dance')"
+                            className="flex-1 p-5 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-blue-500 text-lg placeholder:text-slate-400"
+                        />
+                        <button
+                            onClick={handleAddSeed}
+                            className="px-8 bg-blue-100 text-blue-600 rounded-2xl font-black hover:bg-blue-200 transition-colors uppercase tracking-tight text-sm"
+                        >
+                            Add
+                        </button>
+                    </div>
+                </div>
+
                 <div className="text-sm font-bold tracking-widest uppercase text-slate-300">
                     Connection: {status}
                 </div>
@@ -184,7 +253,7 @@ export const Interviewer: React.FC = () => {
                         Live Captures
                     </h3>
                     <button
-                        onClick={() => alert("Creating your heirloom PDF...")}
+                        onClick={handleExport}
                         className="p-3 bg-slate-50 rounded-xl hover:bg-blue-50 transition-colors text-blue-600"
                         title="Export Memoir"
                     >
@@ -198,8 +267,12 @@ export const Interviewer: React.FC = () => {
                         <p className="text-xl text-slate-400 italic text-center mt-20">No memories captured yet...</p>
                     ) : (
                         fragments.map((frag, i) => (
-                            <div key={i} className="group p-6 bg-slate-50 rounded-3xl border border-slate-100 hover:border-blue-200 hover:bg-white transition-all duration-300">
-                                <span className="text-xs font-black text-blue-600 uppercase tracking-widest">{frag.category}</span>
+                            <div key={i} className={`group p-6 bg-white rounded-3xl border border-slate-100 hover:border-blue-200 transition-all duration-300 shadow-sm
+                                ${frag.category === 'Visual Memory' ? 'border-l-4 border-l-purple-500' : ''}`}>
+                                <div className="flex justify-between items-start">
+                                    <span className="text-xs font-black text-blue-600 uppercase tracking-widest">{frag.category}</span>
+                                    {frag.category === 'Visual Memory' && <span className="text-lg">📸</span>}
+                                </div>
                                 <p className="text-xl text-slate-900 font-bold leading-tight mt-2">{frag.content}</p>
                                 {frag.context && <p className="text-sm text-slate-400 mt-3 italic leading-relaxed">{frag.context}</p>}
                             </div>

@@ -12,13 +12,13 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Configuration
-PROJECT_ID = "memoria-481416" # Hardcoded for forced context
+PROJECT_ID = os.getenv("GOOGLE_CLOUD_PROJECT")
 LOCATION = os.getenv("GOOGLE_CLOUD_LOCATION", "us-central1")
-MODEL_NAME = "gemini-2.5-flash-lite" 
+MODEL_NAME = "gemini-1.5-flash" # Reverting to standard Flash for stability
 
 # Initialize Vertex AI
 if PROJECT_ID:
-    print(f"DEBUG: FORCING Vertex AI with PROJECT_ID: {PROJECT_ID}")
+    print(f"DEBUG: Initializing Vertex AI with PROJECT_ID: {PROJECT_ID}")
     vertexai.init(project=PROJECT_ID, location=LOCATION)
     model = GenerativeModel(MODEL_NAME)
 else:
@@ -41,11 +41,11 @@ class ChatCompletionRequest(BaseModel):
     temperature: Optional[float] = 0.7
     stream: Optional[bool] = False
 
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, FileResponse
 import json
-
 import database
 import rag_service
+import memoir_generator
 import asyncio
 
 # Initialize DB on startup
@@ -62,9 +62,12 @@ async def extract_memories(session_id: str, messages: List[Message]):
     history_text = "\n".join([f"{m.role}: {m.content}" for m in messages])
     prompt = f"""
     Analyze the following conversation history from an AI biographer interview.
-    Extract key "Memory Fragments" (People, Places, Dates, Significant Events).
-    Return them as a JSON list of objects with "category", "content", and "context".
-    Only extract NEW information that hasn't been mentioned before.
+    1. Extract key "Memory Fragments" (People, Places, Dates, Significant Events).
+    2. Identify the "Predominant Era" discussed (modern, vintage (70s-90s), or sepia (pre-70s)).
+    
+    Return a JSON object with:
+    - "fragments": list of {category, content, context}
+    - "era": "modern", "vintage", or "sepia"
     
     Conversation:
     {history_text}
@@ -76,29 +79,29 @@ async def extract_memories(session_id: str, messages: List[Message]):
         extraction_model = GenerativeModel("gemini-1.5-flash") # Use standard flash for extraction
         response = extraction_model.generate_content(prompt)
         text = response.text.replace("```json", "").replace("```", "").strip()
-        fragments = json.loads(text)
+        data = json.loads(text)
+        
+        fragments = data.get("fragments", [])
+        era = data.get("era", "modern")
         
         rag = rag_service.get_rag_service()
         for frag in fragments:
+            # ... (same as before)
             content = frag.get("content", "")
             category = frag.get("category", "General")
             context = frag.get("context", "")
             
-            # Generate embedding for the new fragment
             embedding = None
             if rag:
                 embeddings = rag.get_embeddings([f"{category}: {content}"])
                 if embeddings:
                     embedding = rag.serialize_embedding(embeddings[0])
             
-            database.save_fragment(
-                session_id, 
-                category, 
-                content, 
-                context,
-                embedding
-            )
-        logging.info(f"Extracted {len(fragments)} fragments for session {session_id}")
+            database.save_fragment(session_id, category, content, context, embedding)
+        
+        # Save era to summary/session metadata if needed, but for now we'll just log
+        logging.info(f"Detected Era: {era} for session {session_id}")
+        # In a real app, we'd have a way to push this to the frontend (WebSockets)
     except Exception as e:
         logging.error(f"Failed to extract memories: {e}")
 
@@ -113,7 +116,16 @@ async def chat_completions(request: Request, completion_request: ChatCompletionR
         rag = rag_service.get_rag_service()
         existing_fragments = database.get_all_fragments()
         
+        # 1b. Fetch Family Seeds
+        active_seeds = database.get_active_seeds()
+        seeds_context = ""
+        if active_seeds:
+            seeds_context = "\n\nFamily members suggested these topics to cover:\n"
+            for sid, content in active_seeds:
+                seeds_context += f"- {content}\n"
+        
         memory_context = ""
+        # ... (rest of search logic)
         if existing_fragments and rag and user_query:
             relevant = rag.retrieve_relevant(user_query, existing_fragments, top_k=5)
             if relevant:
@@ -126,9 +138,22 @@ async def chat_completions(request: Request, completion_request: ChatCompletionR
             for cat, content, ctx, _ in existing_fragments[:5]: # Just take first 5
                 memory_context += f"- [{cat}]: {content} ({ctx})\n"
 
+        # 1c. Sentiment Analysis (for Phase 5)
+        sentiment_instruction = ""
+        if user_query:
+            try:
+                # Lightweight sentiment check
+                sentiment_model = GenerativeModel("gemini-1.5-flash")
+                sent_resp = sentiment_model.generate_content(f"Analyze the sentiment of this text: '{user_query}'. Return only one word: 'positive', 'neutral', or 'sad/emotional'.")
+                sentiment = sent_resp.text.strip().lower()
+                if 'sad' in sentiment or 'emotional' in sentiment:
+                    sentiment_instruction = "\n\nCRITICAL: The user seems emotional. Use an extremely gentle, slow, and comforting tone. Acknowledge their feelings warmly before continuing."
+            except:
+                pass
+
         # 2. Parse Messages & Setup Instructions
         base_system = "You are Memoria, a deeply empathetic and patient AI biographer. Your goal is to help elderly users record their life stories. Keep questions open-ended and use the context of past stories to show you remember them."
-        system_instruction = base_system + memory_context
+        system_instruction = base_system + memory_context + seeds_context + sentiment_instruction
         
         history = []
         for msg in completion_request.messages:
@@ -226,10 +251,57 @@ async def vision_context(request: Request):
 @app.get("/memories")
 async def get_memories():
     """
-    Returns all extracted memory fragments.
+    Returns all extracted memory fragments and the detected era.
     """
     fragments = database.get_all_fragments()
-    return [{"category": f[0], "content": f[1], "context": f[2]} for f in fragments]
+    # Simple heuristic for era if not persisted: check for dates or keywords
+    era = "modern"
+    for frag in fragments:
+        content = frag[1].lower()
+        if any(w in content for w in ["young", "childhood", "grandparents", "1940", "1950", "1960"]):
+            era = "sepia"
+            break
+        elif any(w in content for w in ["1970", "1980", "1990", "college"]):
+            era = "vintage"
+            
+    return {
+        "fragments": [{"category": f[0], "content": f[1], "context": f[2]} for f in fragments],
+        "era": era
+    }
+
+@app.get("/export")
+async def export_memoir(user_name: str = "User"):
+    """
+    Generates and returns a PDF memoir.
+    """
+    fragments = database.get_all_fragments()
+    if not fragments:
+        raise HTTPException(status_code=400, detail="No memories to export.")
+    
+    gen = memoir_generator.MemoirGenerator()
+    try:
+        filepath = gen.generate(user_name, fragments)
+        return FileResponse(
+            filepath, 
+            media_type='application/pdf', 
+            filename=os.path.basename(filepath)
+        )
+    except Exception as e:
+        logging.error(f"Export failed: {e}")
+        raise HTTPException(status_code=500, detail="Failed to generate PDF.")
+
+@app.post("/seeds")
+async def add_seed(request: Request):
+    """
+    Adds a new memory seed from family.
+    """
+    data = await request.json()
+    content = data.get("content")
+    if not content:
+        raise HTTPException(status_code=400, detail="Seed content required.")
+    
+    database.save_seed(content)
+    return {"status": "Seed saved"}
 
 if __name__ == "__main__":
     import uvicorn
