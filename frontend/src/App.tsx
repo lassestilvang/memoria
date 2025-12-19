@@ -2,14 +2,15 @@ import { Interviewer } from './components/Interviewer';
 
 function App() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-blue-100 flex items-center justify-center p-4">
-      <div className="max-w-4xl w-full">
-        <header className="text-center mb-12">
-          <h1 className="text-4xl md:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600 mb-4">
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6 md:p-12">
+      <div className="w-full max-w-2xl animate-subtle-float">
+        <header className="text-center mb-16">
+          <h1 className="text-5xl md:text-6xl font-black text-slate-900 mb-6 font-display">
             Memoria
           </h1>
-          <p className="text-xl text-gray-600 font-light">
-            Your personal AI biographer. preserving your stories for generations.
+          <p className="text-2xl text-slate-500 font-medium max-w-lg mx-auto leading-relaxed">
+            Your stories are treasures. <br />
+            Let's preserve them together.
           </p>
         </header>
 

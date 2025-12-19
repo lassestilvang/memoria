@@ -1,1 +1,52 @@
 @import "tailwindcss";
+
+@theme {
+  --color-brand-primary: #2563eb;
+  --color-brand-secondary: #4f46e5;
+  --color-senior-bg: #f8fafc;
+  --color-senior-text: #0f172a;
+  
+  --animate-voice-pulse: pulse-glow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  --animate-subtle-float: float 3s ease-in-out infinite;
+
+  @keyframes pulse-glow {
+    0%, 100% {
+      opacity: 1;
+      transform: scale(1);
+      box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.4);
+    }
+    50% {
+      opacity: .8;
+      transform: scale(1.05);
+      box-shadow: 0 0 20px 10px rgba(37, 99, 235, 0);
+    }
+  }
+
+  @keyframes float {
+    0%, 100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-10px);
+    }
+  }
+}
+
+body {
+  background-color: var(--color-senior-bg);
+  color: var(--color-senior-text);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3 {
+  letter-spacing: -0.02em;
+}
+
+.premium-card {
+  @apply bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100;
+}
+
+.senior-button {
+  @apply px-8 py-5 rounded-2xl text-xl font-bold transition-all active:scale-95 shadow-lg;
+}
