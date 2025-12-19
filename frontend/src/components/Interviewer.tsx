@@ -5,13 +5,17 @@ export const Interviewer: React.FC = () => {
     const [agentId, setAgentId] = useState(import.meta.env.VITE_ELEVENLABS_AGENT_ID || '');
     const [error, setError] = useState<string | null>(null);
     const [fragments, setFragments] = useState<any[]>([]);
+    const [showSummary, setShowSummary] = useState(false);
 
     const conversation = useConversation({
         onConnect: () => {
             console.log("Connected to ElevenLabs");
             setError(null);
         },
-        onDisconnect: () => console.log("Disconnected from ElevenLabs"),
+        onDisconnect: () => {
+            console.log("Disconnected from ElevenLabs");
+            setShowSummary(true);
+        },
         onMessage: (message) => console.log("Message:", message),
         onError: (err) => {
             console.error("Error:", err);
@@ -23,23 +27,26 @@ export const Interviewer: React.FC = () => {
     useEffect(() => {
         let interval: any;
         if (conversation.status === 'connected') {
-            interval = setInterval(async () => {
-                try {
-                    const res = await fetch('http://localhost:8000/memories');
-                    if (res.ok) {
-                        const data = await res.json();
-                        setFragments(data);
-                    }
-                } catch (err) {
-                    console.error("Failed to fetch memories", err);
-                }
-            }, 3000);
+            interval = setInterval(fetchMemories, 3000);
         }
         return () => clearInterval(interval);
     }, [conversation.status]);
 
+    const fetchMemories = async () => {
+        try {
+            const res = await fetch('http://localhost:8000/memories');
+            if (res.ok) {
+                const data = await res.json();
+                setFragments(data);
+            }
+        } catch (err) {
+            console.error("Failed to fetch memories", err);
+        }
+    };
+
     const startConversation = async () => {
         setError(null);
+        setShowSummary(false);
         if (!agentId) {
             alert('Please provide an Agent ID');
             return;
@@ -67,9 +74,11 @@ export const Interviewer: React.FC = () => {
     const isSpeaking = conversation.isSpeaking;
 
     return (
-        <div className="flex flex-col lg:flex-row gap-8 max-w-6xl w-full mx-auto p-4">
+        <div className="flex flex-col lg:flex-row gap-8 max-w-6xl w-full mx-auto p-4 relative">
             {/* Main Interviewer Card */}
-            <div className="premium-card p-10 md:p-16 flex flex-col items-center space-y-12 flex-1">
+            <div className={`premium-card p-10 md:p-16 flex flex-col items-center space-y-12 flex-1 transition-all duration-500 
+                ${showSummary ? 'opacity-20 blur-sm pointer-events-none' : 'opacity-100'}`}>
+
                 {/* Visual Voice Feedback */}
                 <div className="relative">
                     {isConnected && (
@@ -89,43 +98,69 @@ export const Interviewer: React.FC = () => {
                     <h2 className="text-4xl font-bold text-slate-900">
                         {isConnected ? 'I am listening' : 'Ready to talk?'}
                     </h2>
-                    <p className="text-2xl text-slate-500 font-medium leading-relaxed">
+                    <p className="text-2xl text-slate-500 font-medium leading-relaxed max-w-md">
                         {isConnected
                             ? (isSpeaking ? 'Agent is speaking...' : 'It is your turn to speak.')
                             : 'Tap the button below whenever you are ready to share a memory.'}
                     </p>
                 </div>
 
-                <div className="w-full pt-4">
+                <div className="w-full pt-4 space-y-4">
                     {!import.meta.env.VITE_ELEVENLABS_AGENT_ID && (
                         <input
                             type="text"
                             placeholder="Paste Agent ID here"
                             value={agentId}
                             onChange={(e) => setAgentId(e.target.value)}
-                            className="w-full mb-8 px-6 py-4 border-2 border-slate-100 rounded-2xl text-xl focus:border-blue-500 outline-none transition-all"
+                            className="w-full mb-4 px-6 py-4 border-2 border-slate-100 rounded-2xl text-xl focus:border-blue-500 outline-none transition-all"
                         />
                     )}
 
-                    <button
-                        onClick={isConnected ? stopConversation : startConversation}
-                        className={`senior-button w-full shadow-2xl shadow-blue-500/20 
-                            ${isConnected
-                                ? 'bg-rose-500 hover:bg-rose-600 text-white'
-                                : 'bg-blue-600 hover:bg-blue-700 text-white'
-                            }`}
-                    >
-                        {isConnected ? 'End Session' : 'Start Session'}
-                    </button>
-
-                    {!isConnected && (
+                    <div className="flex gap-4">
                         <button
-                            onClick={() => navigator.mediaDevices.getUserMedia({ audio: true }).catch(console.error)}
-                            className="w-full text-center mt-6 text-lg text-blue-600 font-bold hover:underline"
+                            onClick={isConnected ? stopConversation : startConversation}
+                            className={`senior-button flex-[2] shadow-2xl shadow-blue-500/20 
+                                ${isConnected
+                                    ? 'bg-rose-500 hover:bg-rose-600 text-white'
+                                    : 'bg-blue-600 hover:bg-blue-700 text-white'
+                                }`}
                         >
-                            Check Microphone
+                            {isConnected ? 'End Session' : 'Start Session'}
                         </button>
-                    )}
+
+                        <label className={`senior-button flex-1 bg-white border-4 border-slate-100 text-slate-400 hover:text-blue-600 hover:border-blue-100 cursor-pointer flex items-center justify-center transition-all 
+                            ${isConnected ? 'opacity-100' : 'opacity-50 pointer-events-none'}`}>
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                            <input
+                                type="file"
+                                className="hidden"
+                                accept="image/*"
+                                onChange={async (e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) {
+                                        const reader = new FileReader();
+                                        reader.onloadend = async () => {
+                                            const base64 = (reader.result as string).split(',')[1];
+                                            try {
+                                                await fetch('http://localhost:8000/vision-context', {
+                                                    method: 'POST',
+                                                    headers: { 'Content-Type': 'application/json' },
+                                                    body: JSON.stringify({ image: base64 })
+                                                });
+                                                fetchMemories();
+                                            } catch (err) {
+                                                console.error("Vision upload failed", err);
+                                            }
+                                        };
+                                        reader.readAsDataURL(file);
+                                    }
+                                }}
+                            />
+                        </label>
+                    </div>
                 </div>
 
                 {error && (
@@ -140,26 +175,68 @@ export const Interviewer: React.FC = () => {
             </div>
 
             {/* Story Map / Memories Sidebar */}
-            <div className={`premium-card p-8 w-full lg:w-80 flex flex-col transition-all duration-500 
+            <div className={`premium-card p-8 w-full lg:w-96 flex flex-col transition-all duration-500 
                 ${isConnected || fragments.length > 0 ? 'opacity-100' : 'opacity-0 scale-95 pointer-events-none'}`}>
-                <h3 className="text-xl font-bold text-slate-900 mb-6 flex items-center">
-                    <span className="w-2 h-2 bg-blue-600 rounded-full mr-2" />
-                    Captured Memories
-                </h3>
-                <div className="space-y-4 overflow-y-auto max-h-[600px] pr-2">
+                <div className="flex items-center justify-between mb-8">
+                    <h3 className="text-2xl font-bold text-slate-900 flex items-center">
+                        <span className="w-3 h-3 bg-blue-600 rounded-full mr-3 animate-pulse" />
+                        Live Captures
+                    </h3>
+                    <button
+                        onClick={() => alert("Creating your heirloom PDF...")}
+                        className="p-3 bg-slate-50 rounded-xl hover:bg-blue-50 transition-colors text-blue-600"
+                        title="Export Memoir"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                    </button>
+                </div>
+                <div className="space-y-6 overflow-y-auto max-h-[600px] pr-2 custom-scrollbar">
                     {fragments.length === 0 ? (
-                        <p className="text-slate-400 italic">No memories captured yet...</p>
+                        <p className="text-xl text-slate-400 italic text-center mt-20">No memories captured yet...</p>
                     ) : (
                         fragments.map((frag, i) => (
-                            <div key={i} className="p-4 bg-slate-50 rounded-xl border border-slate-100 animate-in slide-in-from-right duration-300">
-                                <span className="text-xs font-bold text-blue-600 uppercase tracking-tighter">{frag.category}</span>
-                                <p className="text-slate-900 font-medium leading-snug mt-1">{frag.content}</p>
-                                {frag.context && <p className="text-xs text-slate-400 mt-2 italic">{frag.context}</p>}
+                            <div key={i} className="group p-6 bg-slate-50 rounded-3xl border border-slate-100 hover:border-blue-200 hover:bg-white transition-all duration-300">
+                                <span className="text-xs font-black text-blue-600 uppercase tracking-widest">{frag.category}</span>
+                                <p className="text-xl text-slate-900 font-bold leading-tight mt-2">{frag.content}</p>
+                                {frag.context && <p className="text-sm text-slate-400 mt-3 italic leading-relaxed">{frag.context}</p>}
                             </div>
                         ))
                     )}
                 </div>
             </div>
+
+            {/* Session Summary Modal */}
+            {showSummary && (
+                <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 z-50 p-6">
+                    <div className="bg-white rounded-[3rem] shadow-[0_32px_64px_-12px_rgba(0,0,0,0.14)] border border-slate-100 p-12 text-center space-y-8 animate-in zoom-in duration-500">
+                        <div className="w-24 h-24 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto scale-125 mb-4">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                            </svg>
+                        </div>
+                        <div className="space-y-4">
+                            <h2 className="text-5xl font-black text-slate-900">Wonderful stories!</h2>
+                            <p className="text-2xl text-slate-500 font-medium">We've safely stored {fragments.length} new treasures in your digital heirloom.</p>
+                        </div>
+                        <div className="flex gap-4 pt-6">
+                            <button
+                                onClick={startConversation}
+                                className="senior-button flex-1 bg-blue-600 text-white"
+                            >
+                                Start New Session
+                            </button>
+                            <button
+                                onClick={() => setShowSummary(false)}
+                                className="senior-button flex-1 bg-slate-100 text-slate-600 border-none"
+                            >
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
