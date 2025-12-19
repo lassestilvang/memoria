@@ -17,9 +17,9 @@ export const Interviewer: React.FC = () => {
     const [seed, setSeed] = useState('');
 
     const eraThemes = {
-        modern: 'bg-slate-50',
-        vintage: 'bg-amber-50/30 sepia-25',
-        sepia: 'bg-stone-100 sepia-50'
+        modern: '',
+        vintage: 'bg-gold/5 backdrop-sepia-[0.3]',
+        sepia: 'bg-gold/[0.02] backdrop-sepia-[0.5]'
     };
 
     const conversation = useConversation({
