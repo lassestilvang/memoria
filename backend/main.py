@@ -46,6 +46,7 @@ import json
 import database
 import rag_service
 import memoir_generator
+import imagen_service
 import asyncio
 
 # Initialize DB on startup
@@ -305,9 +306,28 @@ async def export_memoir(user_name: str = "User"):
     if not fragments:
         raise HTTPException(status_code=400, detail="No memories to export.")
     
+    # Generate illustrations for each category (Phase 2 Enhancement)
+    images = {}
+    imagen = imagen_service.get_imagen_service()
+    if imagen:
+        categories = set(f[0] for f in fragments)
+        img_dir = "temp_images"
+        if not os.path.exists(img_dir):
+            os.makedirs(img_dir)
+            
+        for cat in categories:
+            img_path = os.path.join(img_dir, f"{cat.replace(' ', '_')}.png")
+            if not os.path.exists(img_path):
+                # Simple prompt for the image
+                prompt = f"An illustration representing the theme of {cat} in a life story."
+                # We'll run this in a threadpool to not block the event loop if we had many, 
+                # but for now we'll do it sequentially for simplicity.
+                imagen.generate_image(prompt, img_path)
+            images[cat] = img_path
+
     gen = memoir_generator.MemoirGenerator()
     try:
-        filepath = gen.generate(user_name, fragments)
+        filepath = gen.generate(user_name, fragments, images=images)
         return FileResponse(
             filepath, 
             media_type='application/pdf', 
