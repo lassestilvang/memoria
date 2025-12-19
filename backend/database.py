@@ -52,6 +52,10 @@ def init_db():
         print("Migrating database: Adding 'embedding' column to 'fragments' table.")
         cursor.execute("ALTER TABLE fragments ADD COLUMN embedding BLOB")
     
+    if "is_verified" not in columns:
+        print("Migrating database: Adding 'is_verified' column to 'fragments' table.")
+        cursor.execute("ALTER TABLE fragments ADD COLUMN is_verified BOOLEAN DEFAULT 0")
+    
     conn.commit()
     conn.close()
 
@@ -66,8 +70,8 @@ def save_fragment(session_id, category, content, context="", embedding=None):
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute("""
-        INSERT INTO fragments (session_id, category, content, context, embedding) 
-        VALUES (?, ?, ?, ?, ?)
+        INSERT INTO fragments (session_id, category, content, context, embedding, is_verified) 
+        VALUES (?, ?, ?, ?, ?, 0)
     """, (session_id, category, content, context, embedding))
     conn.commit()
     conn.close()
@@ -82,13 +86,48 @@ def save_summary(session_id, content):
     conn.commit()
     conn.close()
 
-def get_all_fragments():
+def get_all_fragments(verified_only=True):
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
-    cursor.execute("SELECT category, content, context, embedding FROM fragments")
+    if verified_only:
+        cursor.execute("SELECT category, content, context, embedding, id FROM fragments WHERE is_verified = 1")
+    else:
+        cursor.execute("SELECT category, content, context, embedding, id, is_verified FROM fragments")
     rows = cursor.fetchall()
     conn.close()
     return rows
+
+def get_pending_fragments():
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, category, content, context FROM fragments WHERE is_verified = 0")
+    rows = cursor.fetchall()
+    conn.close()
+    return rows
+
+def verify_fragment(fragment_id):
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("UPDATE fragments SET is_verified = 1 WHERE id = ?", (fragment_id,))
+    conn.commit()
+    conn.close()
+
+def update_fragment(fragment_id, content, category=None):
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    if category:
+        cursor.execute("UPDATE fragments SET content = ?, category = ? WHERE id = ?", (content, category, fragment_id))
+    else:
+        cursor.execute("UPDATE fragments SET content = ? WHERE id = ?", (content, fragment_id))
+    conn.commit()
+    conn.close()
+
+def delete_fragment(fragment_id):
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM fragments WHERE id = ?", (fragment_id,))
+    conn.commit()
+    conn.close()
 
 def save_seed(content):
     conn = sqlite3.connect(DB_PATH)
