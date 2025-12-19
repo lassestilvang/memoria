@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useConversation } from '@elevenlabs/react';
 
 export const Interviewer: React.FC = () => {
@@ -24,23 +24,14 @@ export const Interviewer: React.FC = () => {
             console.log("Disconnected from ElevenLabs");
             setShowSummary(true);
         },
-        onMessage: (message) => console.log("Message:", message),
-        onError: (err) => {
+        onMessage: (message: { message: string }) => console.log("Message:", message),
+        onError: (err: unknown) => {
             console.error("Error:", err);
-            setError(typeof err === 'string' ? err : (err as any)?.message || 'Unknown error');
+            setError(typeof err === 'string' ? err : (err as { message?: string })?.message || 'Unknown error');
         },
     });
 
-    // Poll for memories during session
-    useEffect(() => {
-        let interval: any;
-        if (conversation.status === 'connected') {
-            interval = setInterval(fetchMemories, 3000);
-        }
-        return () => clearInterval(interval);
-    }, [conversation.status]);
-
-    const fetchMemories = async () => {
+    const fetchMemories = useCallback(async () => {
         try {
             const res = await fetch('http://localhost:8000/memories');
             if (res.ok) {
@@ -51,7 +42,18 @@ export const Interviewer: React.FC = () => {
         } catch (err) {
             console.error("Failed to fetch memories", err);
         }
-    };
+    }, []);
+
+    // Poll for memories during session
+    useEffect(() => {
+        let interval: ReturnType<typeof setInterval> | undefined;
+        if (conversation.status === 'connected') {
+            interval = setInterval(fetchMemories, 3000);
+        }
+        return () => {
+            if (interval) clearInterval(interval);
+        };
+    }, [conversation.status, fetchMemories]);
 
     const startConversation = async () => {
         setError(null);

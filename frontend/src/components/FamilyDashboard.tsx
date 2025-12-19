@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 
 interface Fragment {
     id: number;
@@ -13,11 +13,7 @@ export const FamilyDashboard: React.FC = () => {
     const [editingId, setEditingId] = useState<number | null>(null);
     const [editContent, setEditContent] = useState('');
 
-    useEffect(() => {
-        fetchPending();
-    }, []);
-
-    const fetchPending = async () => {
+    const fetchPending = useCallback(async () => {
         setLoading(true);
         try {
             const res = await fetch('http://localhost:8000/fragments/pending');
@@ -28,7 +24,11 @@ export const FamilyDashboard: React.FC = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
+
+    useEffect(() => {
+        fetchPending();
+    }, [fetchPending]);
 
     const handleVerify = async (id: number) => {
         try {
