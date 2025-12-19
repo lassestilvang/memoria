@@ -12,15 +12,17 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Configuration
-PROJECT_ID = os.getenv("GOOGLE_CLOUD_PROJECT")
+PROJECT_ID = "memoria-481416" # Hardcoded for forced context
 LOCATION = os.getenv("GOOGLE_CLOUD_LOCATION", "us-central1")
 MODEL_NAME = "gemini-2.5-flash-lite" 
 
 # Initialize Vertex AI
 if PROJECT_ID:
+    print(f"DEBUG: FORCING Vertex AI with PROJECT_ID: {PROJECT_ID}")
     vertexai.init(project=PROJECT_ID, location=LOCATION)
     model = GenerativeModel(MODEL_NAME)
 else:
+    print("DEBUG: GOOGLE_CLOUD_PROJECT not set.")
     logging.warning("GOOGLE_CLOUD_PROJECT not set. Vertex AI will not work.")
     model = None
 
@@ -42,7 +44,8 @@ class ChatCompletionRequest(BaseModel):
 from fastapi.responses import StreamingResponse
 import json
 
-from backend import database
+import database
+import rag_service
 import asyncio
 
 # Initialize DB on startup
@@ -75,12 +78,25 @@ async def extract_memories(session_id: str, messages: List[Message]):
         text = response.text.replace("```json", "").replace("```", "").strip()
         fragments = json.loads(text)
         
+        rag = rag_service.get_rag_service()
         for frag in fragments:
+            content = frag.get("content", "")
+            category = frag.get("category", "General")
+            context = frag.get("context", "")
+            
+            # Generate embedding for the new fragment
+            embedding = None
+            if rag:
+                embeddings = rag.get_embeddings([f"{category}: {content}"])
+                if embeddings:
+                    embedding = rag.serialize_embedding(embeddings[0])
+            
             database.save_fragment(
                 session_id, 
-                frag.get("category", "General"), 
-                frag.get("content", ""), 
-                frag.get("context", "")
+                category, 
+                content, 
+                context,
+                embedding
             )
         logging.info(f"Extracted {len(fragments)} fragments for session {session_id}")
     except Exception as e:
@@ -88,78 +104,85 @@ async def extract_memories(session_id: str, messages: List[Message]):
 
 @app.post("/chat/completions")
 async def chat_completions(request: Request, completion_request: ChatCompletionRequest):
-    """
-    Mimics the OpenAI Chat Completions API with added Persistence.
-    """
     if not model:
         raise HTTPException(status_code=500, detail="Vertex AI not configured.")
-
-    # 1. Fetch Existing Memories for Context
-    existing_fragments = database.get_all_fragments()
-    memory_context = ""
-    if existing_fragments:
-        memory_context = "\n\nKnown memories about the user:\n"
-        for cat, content, ctx in existing_fragments:
-            memory_context += f"- [{cat}]: {content} ({ctx})\n"
-
-    # 2. Parse Messages & Setup Instructions
-    base_system = "You are Memoria, a deeply empathetic and patient AI biographer. Your goal is to help elderly users record their life stories. Keep questions open-ended and use the context of past stories to show you remember them."
-    system_instruction = base_system + memory_context
     
-    history = []
-    for msg in completion_request.messages:
-        if msg.role == "system":
-            # We append our memory context to whatever system prompt ElevenLabs sends
-            system_instruction = msg.content + memory_context
-        elif msg.role == "user":
-            history.append(Content(role="user", parts=[Part.from_text(msg.content)]))
-        elif msg.role == "assistant":
-            history.append(Content(role="model", parts=[Part.from_text(msg.content)]))
-
-    # 3. Configure Gemini
-    current_model = GenerativeModel(MODEL_NAME, system_instruction=[system_instruction])
-    chat = current_model.start_chat(history=history[:-1] if history else [])
-    last_message = history[-1].parts[0].text if history and history[-1].role == 'user' else "Hello, I am ready to share my story."
-
-    # 4. Generate & Stream/Return
-    session_id = str(uuid.uuid4()) # For now, a new ID per request if not tracked
-    
-    if completion_request.stream:
-        async def generate_chunks():
-            response = chat.send_message(last_message, stream=True)
-            full_content = ""
-            chunk_id = f"chatcmpl-{uuid.uuid4()}"
-            
-            for chunk in response:
-                if chunk.text:
-                    full_content += chunk.text
-                    yield f"data: {json.dumps({'id': chunk_id, 'object': 'chat.completion.chunk', 'choices': [{'index': 0, 'delta': {'content': chunk.text}, 'finish_reason': None}]})}\n\n"
-            
-            # After stream completes, trigger extraction
-            asyncio.create_task(extract_memories(session_id, completion_request.messages + [Message(role="assistant", content=full_content)]))
-            yield "data: [DONE]\n\n"
+    try:
+        # 1. Fetch Relevant Memories for Context (RAG)
+        user_query = completion_request.messages[-1].content if completion_request.messages else ""
+        rag = rag_service.get_rag_service()
+        existing_fragments = database.get_all_fragments()
         
-        return StreamingResponse(generate_chunks(), media_type="text/event-stream")
+        memory_context = ""
+        if existing_fragments and rag and user_query:
+            relevant = rag.retrieve_relevant(user_query, existing_fragments, top_k=5)
+            if relevant:
+                memory_context = "\n\nRelevant memories from past conversations:\n"
+                for cat, content, ctx in relevant:
+                    memory_context += f"- [{cat}]: {content} ({ctx})\n"
+        elif existing_fragments:
+            # Fallback if RAG fails or query is empty - take most recent or generic
+            memory_context = "\n\nKnown memories about the user:\n"
+            for cat, content, ctx, _ in existing_fragments[:5]: # Just take first 5
+                memory_context += f"- [{cat}]: {content} ({ctx})\n"
 
-    else:
-        response = chat.send_message(last_message)
-        response_text = response.text
+        # 2. Parse Messages & Setup Instructions
+        base_system = "You are Memoria, a deeply empathetic and patient AI biographer. Your goal is to help elderly users record their life stories. Keep questions open-ended and use the context of past stories to show you remember them."
+        system_instruction = base_system + memory_context
         
-        # Trigger background extraction
-        asyncio.create_task(extract_memories(session_id, completion_request.messages + [Message(role="assistant", content=response_text)]))
+        history = []
+        for msg in completion_request.messages:
+            if msg.role == "system":
+                # We append our memory context to whatever system prompt ElevenLabs sends
+                system_instruction = msg.content + memory_context
+            elif msg.role == "user":
+                history.append(Content(role="user", parts=[Part.from_text(msg.content)]))
+            elif msg.role == "assistant":
+                history.append(Content(role="model", parts=[Part.from_text(msg.content)]))
 
-        return {
-            "id": f"chatcmpl-{uuid.uuid4()}",
-            "object": "chat.completion",
-            "created": int(time.time()),
-            "model": "memoria-gemini",
-            "choices": [{
-                "index": 0,
-                "message": {"role": "assistant", "content": response_text},
-                "finish_reason": "stop"
-            }]
-        }
+        # 3. Configure Gemini
+        current_model = GenerativeModel(MODEL_NAME, system_instruction=[system_instruction])
+        chat = current_model.start_chat(history=history[:-1] if history else [])
+        last_message = history[-1].parts[0].text if history and history[-1].role == 'user' else "Hello, I am ready to share my story."
 
+        # 4. Generate & Stream/Return
+        session_id = str(uuid.uuid4()) # For now, a new ID per request if not tracked
+        
+        if completion_request.stream:
+            async def generate_chunks():
+                response = chat.send_message(last_message, stream=True)
+                full_content = ""
+                chunk_id = f"chatcmpl-{uuid.uuid4()}"
+                
+                for chunk in response:
+                    if chunk.text:
+                        full_content += chunk.text
+                        yield f"data: {json.dumps({'id': chunk_id, 'object': 'chat.completion.chunk', 'choices': [{'index': 0, 'delta': {'content': chunk.text}, 'finish_reason': None}]})}\n\n"
+                
+                # After stream completes, trigger extraction
+                asyncio.create_task(extract_memories(session_id, completion_request.messages + [Message(role="assistant", content=full_content)]))
+                yield "data: [DONE]\n\n"
+            
+            return StreamingResponse(generate_chunks(), media_type="text/event-stream")
+
+        else:
+            response = chat.send_message(last_message)
+            response_text = response.text
+            
+            # Trigger background extraction
+            asyncio.create_task(extract_memories(session_id, completion_request.messages + [Message(role="assistant", content=response_text)]))
+
+            return {
+                "id": f"chatcmpl-{uuid.uuid4()}",
+                "object": "chat.completion",
+                "created": int(time.time()),
+                "model": "memoria-gemini",
+                "choices": [{
+                    "index": 0,
+                    "message": {"role": "assistant", "content": response_text},
+                    "finish_reason": "stop"
+                }]
+            }
 
     except Exception as e:
         logging.error(f"Error calling Vertex AI: {e}")

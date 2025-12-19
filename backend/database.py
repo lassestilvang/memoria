@@ -23,6 +23,7 @@ def init_db():
             category TEXT,
             content TEXT,
             context TEXT,
+            embedding BLOB,
             FOREIGN KEY (session_id) REFERENCES sessions(id)
         )
     """)
@@ -45,13 +46,13 @@ def save_session(session_id):
     conn.commit()
     conn.close()
 
-def save_fragment(session_id, category, content, context=""):
+def save_fragment(session_id, category, content, context="", embedding=None):
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute("""
-        INSERT INTO fragments (session_id, category, content, context) 
-        VALUES (?, ?, ?, ?)
-    """, (session_id, category, content, context))
+        INSERT INTO fragments (session_id, category, content, context, embedding) 
+        VALUES (?, ?, ?, ?, ?)
+    """, (session_id, category, content, context, embedding))
     conn.commit()
     conn.close()
 
@@ -68,7 +69,7 @@ def save_summary(session_id, content):
 def get_all_fragments():
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
-    cursor.execute("SELECT category, content, context FROM fragments")
+    cursor.execute("SELECT category, content, context, embedding FROM fragments")
     rows = cursor.fetchall()
     conn.close()
     return rows
