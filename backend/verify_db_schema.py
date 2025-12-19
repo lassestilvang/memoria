@@ -28,6 +28,7 @@ def verify_db():
     columns = [c[1] for c in cursor.fetchall()]
     print(f"Fragments columns: {columns}")
     assert "embedding" in columns, "Column 'embedding' missing from fragments!"
+    assert "is_verified" in columns, "Column 'is_verified' missing from fragments!"
     
     print("Database verification SUCCESSFUL!")
     conn.close()
