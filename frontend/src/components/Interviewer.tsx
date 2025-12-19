@@ -54,6 +54,7 @@ export const Interviewer: React.FC = () => {
         try {
             await conversation.startSession({
                 agentId: agentId as string,
+                connectionType: 'webrtc',
             });
         } catch (err: any) {
             console.error(err);
