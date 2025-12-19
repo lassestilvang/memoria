@@ -45,6 +45,13 @@ def init_db():
         )
     """)
     
+    # Migration: Add embedding column if it doesn't exist
+    cursor.execute("PRAGMA table_info(fragments)")
+    columns = [col[1] for col in cursor.fetchall()]
+    if "embedding" not in columns:
+        print("Migrating database: Adding 'embedding' column to 'fragments' table.")
+        cursor.execute("ALTER TABLE fragments ADD COLUMN embedding BLOB")
+    
     conn.commit()
     conn.close()
 
