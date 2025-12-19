@@ -1,52 +1,105 @@
 @import "tailwindcss";
 
 @theme {
-  --color-brand-primary: #2563eb;
-  --color-brand-secondary: #4f46e5;
-  --color-senior-bg: #f8fafc;
-  --color-senior-text: #0f172a;
+  /* Premium Palette */
+  --color-midnight: #0a0a0c;
+  --color-gold: #c5a059;
+  --color-gold-light: #e6c17a;
+  --color-silver: #e2e8f0;
+  --color-glass: rgba(255, 255, 255, 0.03);
+  --color-glass-border: rgba(255, 255, 255, 0.1);
   
-  --animate-voice-pulse: pulse-glow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-  --animate-subtle-float: float 3s ease-in-out infinite;
+  /* Typography */
+  --font-display: 'Playfair Display', serif;
+  --font-sans: 'Outfit', sans-serif;
+
+  /* Animations */
+  --animate-voice-pulse: pulse-glow 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  --animate-float: float 6s ease-in-out infinite;
+  --animate-reveal: reveal 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 
   @keyframes pulse-glow {
     0%, 100% {
       opacity: 1;
       transform: scale(1);
-      box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.4);
+      box-shadow: 0 0 40px -10px var(--color-gold);
     }
     50% {
-      opacity: .8;
-      transform: scale(1.05);
-      box-shadow: 0 0 20px 10px rgba(37, 99, 235, 0);
+      opacity: 0.7;
+      transform: scale(1.08);
+      box-shadow: 0 0 80px 0px var(--color-gold-light);
     }
   }
 
   @keyframes float {
-    0%, 100% {
-      transform: translateY(0);
-    }
-    50% {
-      transform: translateY(-10px);
-    }
+    0%, 100% { transform: translateY(0) rotate(0); }
+    33% { transform: translateY(-15px) rotate(1deg); }
+    66% { transform: translateY(5px) rotate(-1deg); }
+  }
+
+  @keyframes reveal {
+    0% { opacity: 0; transform: translateY(20px); filter: blur(10px); }
+    100% { opacity: 1; transform: translateY(0); filter: blur(0); }
   }
 }
 
-body {
-  background-color: var(--color-senior-bg);
-  color: var(--color-senior-text);
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
-  -webkit-font-smoothing: antialiased;
+@layer base {
+  body {
+    @apply bg-midnight text-silver font-sans selection:bg-gold selection:text-midnight;
+    background-image: radial-gradient(circle at 50% -20%, #1a1a2e 0%, #0a0a0c 100%);
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1, h2, h3 {
+    @apply font-display tracking-tight text-white;
+  }
 }
 
-h1, h2, h3 {
-  letter-spacing: -0.02em;
+@layer components {
+  /* Luxury Components */
+  .glass-card {
+    @apply bg-white/[0.03] backdrop-blur-xl border border-white/10 rounded-[2.5rem] shadow-2xl;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .glass-card:hover {
+    @apply border-gold/30 bg-white/[0.05] shadow-gold/5;
+  }
+
+  .premium-button {
+    @apply relative overflow-hidden px-10 py-5 rounded-2xl font-semibold tracking-wide transition-all duration-300 active:scale-95 flex items-center justify-center gap-3;
+  }
+
+  .button-primary {
+    @apply bg-gradient-to-br from-gold to-gold-light text-midnight shadow-xl shadow-gold/20 hover:shadow-gold/40 hover:-translate-y-0.5;
+  }
+
+  .button-secondary {
+    @apply bg-white/5 border border-white/10 text-white hover:bg-white/10 hover:border-white/20;
+  }
+
+  .text-gradient {
+    @apply bg-clip-text text-transparent bg-gradient-to-br from-white via-white to-gold/50;
+  }
+
+  .input-field {
+    @apply bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-lg focus:outline-none focus:ring-2 focus:ring-gold/50 focus:border-gold/50 transition-all placeholder:text-white/20;
+  }
+
+  /* Custom Scrollbar */
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    @apply bg-white/10 rounded-full hover:bg-gold/30 transition-colors;
+  }
 }
 
-.premium-card {
-  @apply bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100;
-}
-
-.senior-button {
-  @apply px-8 py-5 rounded-2xl text-xl font-bold transition-all active:scale-95 shadow-lg;
-}
+/* Page Transitions */
+.reveal-1 { animation: reveal 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.1s both; }
+.reveal-2 { animation: reveal 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.2s both; }
+.reveal-3 { animation: reveal 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.3s both; }
