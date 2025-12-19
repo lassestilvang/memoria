@@ -1,10 +1,17 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useConversation } from '@elevenlabs/react';
 
+interface Fragment {
+    id: number | null;
+    category: string;
+    content: string;
+    context: string;
+}
+
 export const Interviewer: React.FC = () => {
     const [agentId, setAgentId] = useState(import.meta.env.VITE_ELEVENLABS_AGENT_ID || '');
     const [error, setError] = useState<string | null>(null);
-    const [fragments, setFragments] = useState<any[]>([]);
+    const [fragments, setFragments] = useState<Fragment[]>([]);
     const [showSummary, setShowSummary] = useState(false);
     const [era, setEra] = useState<'modern' | 'vintage' | 'sepia'>('modern');
     const [seed, setSeed] = useState('');
@@ -67,12 +74,13 @@ export const Interviewer: React.FC = () => {
                 agentId: agentId as string,
                 connectionType: 'webrtc',
             });
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error(err);
-            if (err.name === 'NotAllowedError') {
+            const error = err as { name?: string; message?: string };
+            if (error.name === 'NotAllowedError') {
                 setError('Microphone access denied. Please grant permission in settings.');
             } else {
-                setError(err.message || 'Failed to start session');
+                setError(error.message || 'Failed to start session');
             }
         }
     };
