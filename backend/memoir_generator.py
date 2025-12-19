@@ -24,11 +24,14 @@ class MemoirGenerator:
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
 
-    def generate(self, user_name: str, fragments: List[Tuple[str, str, str]]) -> str:
+    def generate(self, user_name: str, fragments: List[Tuple[str, str, str]], images: dict = None) -> str:
         """
         Generates a styled PDF from fragments.
         fragments: List of (category, content, context)
+        images: Dict mapping category names to file paths
         """
+        if images is None:
+            images = {}
         pdf = MemoirPDF()
         pdf.add_page()
         
@@ -65,6 +68,15 @@ class MemoirGenerator:
             pdf.set_draw_color(37, 99, 235)
             pdf.line(pdf.get_x(), pdf.get_y(), pdf.get_x() + 190, pdf.get_y())
             pdf.ln(5)
+            
+            # Draw Category Image if exists
+            if cat in images and os.path.exists(images[cat]):
+                try:
+                    # Centered image
+                    pdf.image(images[cat], x=45, w=120) 
+                    pdf.ln(10)
+                except Exception as e:
+                    print(f"Error adding image for {cat}: {e}")
             
             for content, ctx in items:
                 pdf.set_font('Helvetica', 'B', 12)
