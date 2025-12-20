@@ -6,14 +6,20 @@ interface Fragment {
     content: string;
     context: string;
     audio_url?: string;
+    image_url?: string;
 }
 
-export const FamilyDashboard: React.FC = () => {
+interface FamilyDashboardProps {
+    onOpenStorybook: () => void;
+}
+
+export const FamilyDashboard: React.FC<FamilyDashboardProps> = ({ onOpenStorybook }) => {
     const [pending, setPending] = useState<Fragment[]>([]);
     const [loading, setLoading] = useState(true);
     const [editingId, setEditingId] = useState<number | null>(null);
     const [editContent, setEditContent] = useState('');
     const [synthesizing, setSynthesizing] = useState(false);
+    const [uploadingId, setUploadingId] = useState<number | null>(null);
 
     const fetchPending = useCallback(async () => {
         setLoading(true);
@@ -71,24 +77,34 @@ export const FamilyDashboard: React.FC = () => {
         }
     };
 
+    const handlePhotoUpload = async (id: number, file: File) => {
+        setUploadingId(id);
+        const formData = new FormData();
+        formData.append('file', file);
+        try {
+            const res = await fetch(`http://localhost:8000/upload-photo?fragment_id=${id}`, {
+                method: 'POST',
+                body: formData
+            });
+            if (res.ok) {
+                const data = await res.json();
+                setPending(pending.map(f => f.id === id ? { ...f, image_url: data.image_url } : f));
+                alert("Photo attached to memory!");
+            }
+        } catch (err) {
+            console.error("Photo upload failed", err);
+        } finally {
+            setUploadingId(null);
+        }
+    };
+
     const handleSynthesize = async () => {
         setSynthesizing(true);
         try {
             const res = await fetch('http://localhost:8000/synthesize', { method: 'POST' });
             if (res.ok) {
-                alert("Memoir narrative synthesized successfully! You can now export the full PDF.");
-                // Trigger export automatically
-                const exportRes = await fetch('http://localhost:8000/export?user_name=Lasse');
-                if (exportRes.ok) {
-                    const blob = await exportRes.blob();
-                    const url = window.URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = `Memoir_Lasse_Full_${new Date().toISOString().split('T')[0]}.pdf`;
-                    document.body.appendChild(a);
-                    a.click();
-                    a.remove();
-                }
+                alert("Memoir narrative synthesized successfully! You can now view the storybook.");
+                onOpenStorybook();
             } else {
                 alert("Failed to synthesize. Make sure you have verified fragments.");
             }
@@ -120,13 +136,21 @@ export const FamilyDashboard: React.FC = () => {
                         </span>
                     </div>
                     {pending.length === 0 && (
-                        <button
-                            onClick={handleSynthesize}
-                            disabled={synthesizing}
-                            className="premium-button button-primary px-8 text-sm"
-                        >
-                            {synthesizing ? 'Synthesizing...' : 'Generate Full Memoir'}
-                        </button>
+                        <div className="flex gap-4">
+                            <button
+                                onClick={onOpenStorybook}
+                                className="premium-button button-secondary px-8 text-sm"
+                            >
+                                Open Storybook
+                            </button>
+                            <button
+                                onClick={handleSynthesize}
+                                disabled={synthesizing}
+                                className="premium-button button-primary px-8 text-sm"
+                            >
+                                {synthesizing ? 'Synthesizing...' : 'Update Memoir'}
+                            </button>
+                        </div>
                     )}
                 </div>
             </div>
@@ -163,6 +187,20 @@ export const FamilyDashboard: React.FC = () => {
                                     )}
                                 </div>
                                 <div className="flex gap-4 opacity-0 group-hover:opacity-100 transition-all duration-300 translate-x-4 group-hover:translate-x-0">
+                                    <label className="p-3 bg-white/5 hover:bg-gold hover:text-midnight rounded-xl transition-all cursor-pointer" title="Attach Photo">
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                        </svg>
+                                        <input
+                                            type="file"
+                                            className="hidden"
+                                            accept="image/*"
+                                            onChange={(e) => {
+                                                const file = e.target.files?.[0];
+                                                if (file) handlePhotoUpload(frag.id, file);
+                                            }}
+                                        />
+                                    </label>
                                     <button
                                         onClick={() => { setEditingId(frag.id); setEditContent(frag.content); }}
                                         className="p-3 bg-white/5 hover:bg-gold hover:text-midnight rounded-xl transition-all"
@@ -211,11 +249,18 @@ export const FamilyDashboard: React.FC = () => {
                                         )}
                                     </div>
 
-                                    {frag.audio_url && (
-                                        <div className="audio-player-container">
-                                            <audio controls src={frag.audio_url} className="w-full h-12 rounded-full opacity-60 hover:opacity-100 transition-opacity" />
-                                        </div>
-                                    )}
+                                    <div className="flex flex-col md:flex-row gap-8 items-start">
+                                        {frag.image_url && (
+                                            <div className="w-full md:w-48 aspect-video rounded-2xl overflow-hidden border border-white/10 group-hover:border-gold/30 transition-all">
+                                                <img src={frag.image_url} alt="Memory" className="w-full h-full object-cover" />
+                                            </div>
+                                        )}
+                                        {frag.audio_url && (
+                                            <div className="flex-1 w-full">
+                                                <audio controls src={frag.audio_url} className="w-full h-12 rounded-full opacity-60 hover:opacity-100 transition-opacity" />
+                                            </div>
+                                        )}
+                                    </div>
 
                                     <button
                                         onClick={() => handleVerify(frag.id)}
