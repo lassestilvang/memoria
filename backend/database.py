@@ -23,7 +23,9 @@ def init_db():
             category TEXT,
             content TEXT,
             context TEXT,
+            audio_url TEXT,
             embedding BLOB,
+            is_verified BOOLEAN DEFAULT 0,
             FOREIGN KEY (session_id) REFERENCES sessions(id)
         )
     """)
@@ -33,6 +35,14 @@ def init_db():
             session_id TEXT PRIMARY KEY,
             content TEXT,
             FOREIGN KEY (session_id) REFERENCES sessions(id)
+        )
+    """)
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS synthesized_narrative (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            content TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
     
@@ -45,16 +55,15 @@ def init_db():
         )
     """)
     
-    # Migration: Add embedding column if it doesn't exist
+    # Migration: Add columns if they don't exist
     cursor.execute("PRAGMA table_info(fragments)")
     columns = [col[1] for col in cursor.fetchall()]
     if "embedding" not in columns:
-        print("Migrating database: Adding 'embedding' column to 'fragments' table.")
         cursor.execute("ALTER TABLE fragments ADD COLUMN embedding BLOB")
-    
     if "is_verified" not in columns:
-        print("Migrating database: Adding 'is_verified' column to 'fragments' table.")
         cursor.execute("ALTER TABLE fragments ADD COLUMN is_verified BOOLEAN DEFAULT 0")
+    if "audio_url" not in columns:
+        cursor.execute("ALTER TABLE fragments ADD COLUMN audio_url TEXT")
     
     conn.commit()
     conn.close()
@@ -66,13 +75,13 @@ def save_session(session_id):
     conn.commit()
     conn.close()
 
-def save_fragment(session_id, category, content, context="", embedding=None):
+def save_fragment(session_id, category, content, context="", embedding=None, audio_url=None):
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute("""
-        INSERT INTO fragments (session_id, category, content, context, embedding, is_verified) 
-        VALUES (?, ?, ?, ?, ?, 0)
-    """, (session_id, category, content, context, embedding))
+        INSERT INTO fragments (session_id, category, content, context, embedding, audio_url, is_verified) 
+        VALUES (?, ?, ?, ?, ?, ?, 0)
+    """, (session_id, category, content, context, embedding, audio_url))
     conn.commit()
     conn.close()
 
@@ -143,6 +152,21 @@ def get_active_seeds():
     rows = cursor.fetchall()
     conn.close()
     return rows
+
+def save_synthesized_narrative(content):
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("INSERT INTO synthesized_narrative (content) VALUES (?)", (content,))
+    conn.commit()
+    conn.close()
+
+def get_latest_synthesized_narrative():
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("SELECT content FROM synthesized_narrative ORDER BY created_at DESC LIMIT 1")
+    row = cursor.fetchone()
+    conn.close()
+    return row[0] if row else None
 
 if __name__ == "__main__":
     init_db()
