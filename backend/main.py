@@ -85,7 +85,7 @@ async def extract_memories(session_id: str, messages: List[Message]):
     """
     
     try:
-        extraction_model = GenerativeModel("gemini-1.5-flash") # Use standard flash for extraction
+        extraction_model = GenerativeModel(MODEL_NAME)  # Use same model as chat
         response = extraction_model.generate_content(prompt)
         text = response.text.replace("```json", "").replace("```", "").strip()
         data = json.loads(text)
