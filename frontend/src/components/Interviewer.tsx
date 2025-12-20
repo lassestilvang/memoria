@@ -38,7 +38,7 @@ export const Interviewer: React.FC = () => {
                 const formData = new FormData();
                 formData.append('file', blob);
                 try {
-                    const res = await fetch('http://localhost:8000/upload-audio', {
+                    const res = await fetch(`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000'}/upload-audio`, {
                         method: 'POST',
                         body: formData
                     });
@@ -85,7 +85,7 @@ export const Interviewer: React.FC = () => {
 
     const fetchMemories = useCallback(async () => {
         try {
-            const res = await fetch('http://localhost:8000/memories');
+            const res = await fetch(`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000'}/memories`);
             if (res.ok) {
                 const data = await res.json();
                 setFragments(data.fragments || []);
@@ -137,7 +137,7 @@ export const Interviewer: React.FC = () => {
     const handleAddSeed = async () => {
         if (!seed.trim()) return;
         try {
-            const res = await fetch('http://localhost:8000/seeds', {
+            const res = await fetch(`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000'}/seeds`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ content: seed })
@@ -153,7 +153,7 @@ export const Interviewer: React.FC = () => {
 
     const handleExport = async () => {
         try {
-            const res = await fetch('http://localhost:8000/export?user_name=Lasse');
+            const res = await fetch(`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000'}/export?user_name=Lasse`);
             if (res.ok) {
                 const blob = await res.blob();
                 const url = window.URL.createObjectURL(blob);
@@ -268,7 +268,7 @@ export const Interviewer: React.FC = () => {
                                         reader.onloadend = async () => {
                                             const base64 = (reader.result as string).split(',')[1];
                                             try {
-                                                await fetch('http://localhost:8000/vision-context', {
+                                                await fetch(`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000'}/vision-context`, {
                                                     method: 'POST',
                                                     headers: { 'Content-Type': 'application/json' },
                                                     body: JSON.stringify({ image: base64 })

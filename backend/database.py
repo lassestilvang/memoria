@@ -2,7 +2,11 @@ import sqlite3
 import os
 from datetime import datetime
 
-DB_PATH = os.path.join(os.path.dirname(__file__), "memoria.db")
+# Check if running in Cloud Run
+if os.environ.get("K_SERVICE"):
+    DB_PATH = "/tmp/memoria.db"
+else:
+    DB_PATH = os.path.join(os.path.dirname(__file__), "memoria.db")
 
 def init_db():
     conn = sqlite3.connect(DB_PATH)

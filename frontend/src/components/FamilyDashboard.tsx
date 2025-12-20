@@ -23,7 +23,7 @@ export const FamilyDashboard: React.FC<FamilyDashboardProps> = ({ onOpenStoryboo
     const fetchPending = useCallback(async () => {
         setLoading(true);
         try {
-            const res = await fetch('http://localhost:8000/fragments/pending');
+            const res = await fetch(`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000'}/fragments/pending`);
             const data = await res.json();
             setPending(data);
         } catch (err) {
@@ -39,7 +39,7 @@ export const FamilyDashboard: React.FC<FamilyDashboardProps> = ({ onOpenStoryboo
 
     const handleVerify = async (id: number) => {
         try {
-            const res = await fetch(`http://localhost:8000/fragments/${id}/verify`, { method: 'POST' });
+            const res = await fetch(`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000'}/fragments/${id}/verify`, { method: 'POST' });
             if (res.ok) {
                 setPending(pending.filter(f => f.id !== id));
             }
@@ -51,7 +51,7 @@ export const FamilyDashboard: React.FC<FamilyDashboardProps> = ({ onOpenStoryboo
     const handleDelete = async (id: number) => {
         if (!confirm("Are you sure you want to delete this memory?")) return;
         try {
-            const res = await fetch(`http://localhost:8000/fragments/${id}`, { method: 'DELETE' });
+            const res = await fetch(`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000'}/fragments/${id}`, { method: 'DELETE' });
             if (res.ok) {
                 setPending(pending.filter(f => f.id !== id));
             }
@@ -62,7 +62,7 @@ export const FamilyDashboard: React.FC<FamilyDashboardProps> = ({ onOpenStoryboo
 
     const handleUpdate = async (id: number) => {
         try {
-            const res = await fetch(`http://localhost:8000/fragments/${id}`, {
+            const res = await fetch(`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000'}/fragments/${id}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ content: editContent })
@@ -80,7 +80,7 @@ export const FamilyDashboard: React.FC<FamilyDashboardProps> = ({ onOpenStoryboo
         const formData = new FormData();
         formData.append('file', file);
         try {
-            const res = await fetch(`http://localhost:8000/upload-photo?fragment_id=${id}`, {
+            const res = await fetch(`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000'}/upload-photo?fragment_id=${id}`, {
                 method: 'POST',
                 body: formData
             });
@@ -97,7 +97,7 @@ export const FamilyDashboard: React.FC<FamilyDashboardProps> = ({ onOpenStoryboo
     const handleSynthesize = async () => {
         setSynthesizing(true);
         try {
-            const res = await fetch('http://localhost:8000/synthesize', { method: 'POST' });
+            const res = await fetch(`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000'}/synthesize`, { method: 'POST' });
             if (res.ok) {
                 alert("Memoir narrative synthesized successfully! You can now view the storybook.");
                 onOpenStorybook();

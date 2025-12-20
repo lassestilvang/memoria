@@ -28,6 +28,12 @@ else:
     model = None
 
 app = FastAPI()
+
+# Ensure uploads directories exist
+os.makedirs("uploads/images", exist_ok=True)
+os.makedirs("uploads/audio", exist_ok=True)
+os.makedirs("temp_images", exist_ok=True)
+
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 import time

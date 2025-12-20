@@ -23,8 +23,8 @@ export const Storybook: React.FC<StorybookProps> = ({ onBack }) => {
         setLoading(true);
         try {
             const [memRes, synthRes] = await Promise.all([
-                fetch('http://localhost:8000/memories?verified=true'),
-                fetch('http://localhost:8000/synthesize', { method: 'POST' }) // Ensure we have the latest
+                fetch(`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000'}/memories?verified=true`),
+                fetch(`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000'}/synthesize`, { method: 'POST' }) // Ensure we have the latest
             ]);
 
             const memData = await memRes.json();
