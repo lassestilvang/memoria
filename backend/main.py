@@ -2,7 +2,8 @@
 import os
 import logging
 from typing import List, Optional
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, File, UploadFile
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 import vertexai
 from vertexai.generative_models import GenerativeModel, ChatSession, Content, Part
@@ -27,6 +28,7 @@ else:
     model = None
 
 app = FastAPI()
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 import time
 import uuid
@@ -336,6 +338,58 @@ async def export_memoir(user_name: str = "User"):
     except Exception as e:
         logging.error(f"Export failed: {e}")
         raise HTTPException(status_code=500, detail="Failed to generate PDF.")
+
+@app.post("/upload-audio")
+async def upload_audio(file: UploadFile = File(...), session_id: str = "default"):
+    """
+    Saves an audio snippet and returns the local URL.
+    """
+    file_id = str(uuid.uuid4())
+    filename = f"{session_id}_{file_id}.webm"
+    file_path = os.path.join("uploads", "audio", filename)
+    
+    with open(file_path, "wb") as buffer:
+        buffer.write(await file.read())
+    
+    return {"audio_url": f"http://localhost:8000/uploads/audio/{filename}"}
+
+@app.post("/synthesize")
+async def synthesize_biography():
+    """
+    Uses Gemini to synthesize all verified fragments into a cohesive narrative.
+    """
+    fragments = database.get_all_fragments(verified_only=True)
+    if not fragments:
+        raise HTTPException(status_code=400, detail="No verified memories to synthesize.")
+    
+    # Prepare fragments for the prompt
+    fragments_text = "\n".join([f"- [{f[0]}]: {f[1]}" for f in fragments])
+    
+    prompt = f"""
+    You are a professional biographer. Your task is to take the following scattered memory fragments from an elderly user's life and weave them into a single, cohesive, and beautiful narrative biography.
+    
+    Guidelines:
+    - Use a warm, respectful, and slightly literary tone.
+    - Group related fragments into thematic paragraphs (e.g., Childhood, Career, Love).
+    - Ensure logical flow and transitions between different stages of life.
+    - Focus on the emotional weight of the stories.
+    
+    Memory Fragments:
+    {fragments_text}
+    
+    Narrative Biography:
+    """
+    
+    try:
+        synth_model = GenerativeModel("gemini-1.5-flash")
+        response = synth_model.generate_content(prompt)
+        content = response.text
+        
+        database.save_synthesized_narrative(content)
+        return {"narrative": content}
+    except Exception as e:
+        logging.error(f"Synthesis failed: {e}")
+        raise HTTPException(status_code=500, detail="Failed to synthesize narrative.")
 
 @app.post("/seeds")
 async def add_seed(request: Request):
