@@ -5,6 +5,7 @@ interface Fragment {
     category: string;
     content: string;
     context: string;
+    audio_url?: string;
 }
 
 export const FamilyDashboard: React.FC = () => {
@@ -12,6 +13,7 @@ export const FamilyDashboard: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [editingId, setEditingId] = useState<number | null>(null);
     const [editContent, setEditContent] = useState('');
+    const [synthesizing, setSynthesizing] = useState(false);
 
     const fetchPending = useCallback(async () => {
         setLoading(true);
@@ -69,6 +71,34 @@ export const FamilyDashboard: React.FC = () => {
         }
     };
 
+    const handleSynthesize = async () => {
+        setSynthesizing(true);
+        try {
+            const res = await fetch('http://localhost:8000/synthesize', { method: 'POST' });
+            if (res.ok) {
+                alert("Memoir narrative synthesized successfully! You can now export the full PDF.");
+                // Trigger export automatically
+                const exportRes = await fetch('http://localhost:8000/export?user_name=Lasse');
+                if (exportRes.ok) {
+                    const blob = await exportRes.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `Memoir_Lasse_Full_${new Date().toISOString().split('T')[0]}.pdf`;
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                }
+            } else {
+                alert("Failed to synthesize. Make sure you have verified fragments.");
+            }
+        } catch (err) {
+            console.error("Synthesis failed", err);
+        } finally {
+            setSynthesizing(false);
+        }
+    };
+
     if (loading) return (
         <div className="flex flex-col items-center justify-center p-24 space-y-8 reveal-1">
             <div className="w-16 h-16 border-4 border-gold/20 border-t-gold rounded-full animate-spin" />
@@ -83,10 +113,21 @@ export const FamilyDashboard: React.FC = () => {
                     <h2 className="text-5xl font-display text-gradient">Review Stories</h2>
                     <p className="text-silver/40 text-lg font-light">Refine and verify the memories captured during sessions.</p>
                 </div>
-                <div className="px-6 py-2 bg-gold/10 border border-gold/20 rounded-full">
-                    <span className="text-gold font-black uppercase tracking-[0.2em] text-xs">
-                        {pending.length} Pending Approval
-                    </span>
+                <div className="flex flex-col items-end gap-3">
+                    <div className="px-6 py-2 bg-gold/10 border border-gold/20 rounded-full">
+                        <span className="text-gold font-black uppercase tracking-[0.2em] text-xs">
+                            {pending.length} Pending Approval
+                        </span>
+                    </div>
+                    {pending.length === 0 && (
+                        <button
+                            onClick={handleSynthesize}
+                            disabled={synthesizing}
+                            className="premium-button button-primary px-8 text-sm"
+                        >
+                            {synthesizing ? 'Synthesizing...' : 'Generate Full Memoir'}
+                        </button>
+                    )}
                 </div>
             </div>
 
@@ -96,7 +137,7 @@ export const FamilyDashboard: React.FC = () => {
                     <div className="space-y-4">
                         <p className="text-3xl font-display text-white">All stories are verified</p>
                         <p className="text-xl text-silver/40 font-light max-w-md mx-auto italic">
-                            The digital heirloom is up to date. New stories will appear here after the next interview.
+                            The digital heirloom is up to date. You can now generate the full synthesized biography.
                         </p>
                     </div>
                 </div>
@@ -108,9 +149,19 @@ export const FamilyDashboard: React.FC = () => {
                                 ${editingId === frag.id ? 'border-gold/50 bg-gold/5 shadow-gold/10' : ''}`}>
 
                             <div className="flex justify-between items-start mb-8">
-                                <span className="px-4 py-1.5 bg-white/5 border border-white/10 rounded-full text-[10px] font-black text-gold uppercase tracking-[0.2em]">
-                                    {frag.category}
-                                </span>
+                                <div className="flex flex-col gap-3">
+                                    <span className="px-4 py-1.5 bg-white/5 border border-white/10 rounded-full text-[10px] font-black text-gold uppercase tracking-[0.2em] w-fit">
+                                        {frag.category}
+                                    </span>
+                                    {frag.audio_url && (
+                                        <div className="flex items-center gap-4 text-xs text-gold/60 font-bold uppercase tracking-widest mt-2">
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                                            </svg>
+                                            Original Moment
+                                        </div>
+                                    )}
+                                </div>
                                 <div className="flex gap-4 opacity-0 group-hover:opacity-100 transition-all duration-300 translate-x-4 group-hover:translate-x-0">
                                     <button
                                         onClick={() => { setEditingId(frag.id); setEditContent(frag.content); }}
@@ -159,6 +210,13 @@ export const FamilyDashboard: React.FC = () => {
                                             </p>
                                         )}
                                     </div>
+
+                                    {frag.audio_url && (
+                                        <div className="audio-player-container">
+                                            <audio controls src={frag.audio_url} className="w-full h-12 rounded-full opacity-60 hover:opacity-100 transition-opacity" />
+                                        </div>
+                                    )}
+
                                     <button
                                         onClick={() => handleVerify(frag.id)}
                                         className="premium-button button-primary w-full text-lg group"

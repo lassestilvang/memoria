@@ -22,19 +22,64 @@ export const Interviewer: React.FC = () => {
         sepia: 'bg-gold/[0.02] backdrop-sepia-[0.5]'
     };
 
+    const [recorder, setRecorder] = useState<MediaRecorder | null>(null);
+    const chunksRef = React.useRef<Blob[]>([]);
+
+    const startRecording = useCallback(async () => {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            const mediaRecorder = new MediaRecorder(stream);
+            mediaRecorder.ondataavailable = (e) => {
+                if (e.data.size > 0) chunksRef.current.push(e.data);
+            };
+            mediaRecorder.onstop = async () => {
+                const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
+                chunksRef.current = [];
+                const formData = new FormData();
+                formData.append('file', blob);
+                try {
+                    const res = await fetch('http://localhost:8000/upload-audio', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    const data = await res.json();
+                    console.log("Audio uploaded:", data.audio_url);
+                    // In a production app, we'd link this URL to the last extracted fragment
+                } catch (err) {
+                    console.error("Audio upload failed", err);
+                }
+            };
+            mediaRecorder.start();
+            setRecorder(mediaRecorder);
+        } catch (err) {
+            console.error("Failed to start recorder", err);
+        }
+    }, []);
+
+    const stopRecording = useCallback(() => {
+        if (recorder && recorder.state !== 'inactive') {
+            recorder.stop();
+            recorder.stream.getTracks().forEach(track => track.stop());
+            setRecorder(null);
+        }
+    }, [recorder]);
+
     const conversation = useConversation({
         onConnect: () => {
             console.log("Connected to ElevenLabs");
             setError(null);
+            startRecording();
         },
         onDisconnect: () => {
             console.log("Disconnected from ElevenLabs");
             setShowSummary(true);
+            stopRecording();
         },
         onMessage: (message: { message: string }) => console.log("Message:", message),
         onError: (err: unknown) => {
             console.error("Error:", err);
             setError(typeof err === 'string' ? err : (err as { message?: string })?.message || 'Unknown error');
+            stopRecording();
         },
     });
 
