@@ -24,11 +24,12 @@ class MemoirGenerator:
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
 
-    def generate(self, user_name: str, fragments: List[Tuple[str, str, str]], images: dict = None) -> str:
+    def generate(self, user_name: str, fragments: List[Tuple[str, str, str]], images: dict = None, narrative: str = None) -> str:
         """
-        Generates a styled PDF from fragments.
+        Generates a styled PDF from fragments and/or a synthesized narrative.
         fragments: List of (category, content, context)
         images: Dict mapping category names to file paths
+        narrative: Cohesive biography text
         """
         if images is None:
             images = {}
@@ -47,9 +48,21 @@ class MemoirGenerator:
         pdf.ln(20)
         pdf.set_font('Helvetica', 'I', 12)
         pdf.set_text_color(100)
-        # multi_cell needs a defined width for wrapping
         pdf.multi_cell(190, 10, "A collection of memories, moments, and wisdom captured through conversation.", align='C', new_x=XPos.LMARGIN, new_y=YPos.NEXT)
         
+        # Narrative Section
+        if narrative:
+            pdf.add_page()
+            pdf.ln(10)
+            pdf.set_font('Helvetica', 'B', 18)
+            pdf.set_text_color(30, 41, 59)
+            pdf.cell(0, 15, "The Collected Story", align='L', new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+            pdf.ln(5)
+            pdf.set_font('Helvetica', '', 12)
+            pdf.set_text_color(15, 23, 42)
+            # Replace newlines with proper spacing for multi_cell
+            pdf.multi_cell(190, 8, narrative, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+
         pdf.add_page()
         
         # Group by Category (simplified)
