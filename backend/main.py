@@ -15,7 +15,7 @@ load_dotenv()
 # Configuration
 PROJECT_ID = os.getenv("GOOGLE_CLOUD_PROJECT")
 LOCATION = os.getenv("GOOGLE_CLOUD_LOCATION", "us-central1")
-MODEL_NAME = "gemini-3.0-flash-latest"  # Using latest Gemini 3.0 Flash model
+MODEL_NAME = "gemini-2.0-flash-exp"  # Only model available in this project
 
 # Initialize Vertex AI
 if PROJECT_ID:
