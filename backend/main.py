@@ -253,6 +253,24 @@ async def vision_context(request: Request):
         logging.error(f"Vision analysis failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.post("/upload-photo")
+async def upload_photo(fragment_id: int, file: UploadFile = File(...)):
+    """
+    Saves a photo and links it to a fragment.
+    """
+    file_id = str(uuid.uuid4())
+    ext = file.filename.split('.')[-1] if '.' in file.filename else 'jpg'
+    filename = f"fragment_{fragment_id}_{file_id}.{ext}"
+    file_path = os.path.join("uploads", "images", filename)
+    
+    with open(file_path, "wb") as buffer:
+        buffer.write(await file.read())
+    
+    image_url = f"http://localhost:8000/uploads/images/{filename}"
+    database.update_fragment_image(fragment_id, image_url)
+    
+    return {"image_url": image_url}
+
 @app.get("/memories")
 async def get_memories(verified: bool = True):
     """
@@ -270,14 +288,14 @@ async def get_memories(verified: bool = True):
             era = "vintage"
             
     return {
-        "fragments": [{"id": f[4], "category": f[0], "content": f[1], "context": f[2], "audio_url": f[5]} for f in fragments],
+        "fragments": [{"id": f[4], "category": f[0], "content": f[1], "context": f[2], "audio_url": f[5], "image_url": f[6]} for f in fragments],
         "era": era
     }
 
 @app.get("/fragments/pending")
 async def get_pending():
     fragments = database.get_pending_fragments()
-    return [{"id": f[0], "category": f[1], "content": f[2], "context": f[3], "audio_url": f[4]} for f in fragments]
+    return [{"id": f[0], "category": f[1], "content": f[2], "context": f[3], "audio_url": f[4], "image_url": f[5]} for f in fragments]
 
 @app.post("/fragments/{fragment_id}/verify")
 async def verify_frag(fragment_id: int):
