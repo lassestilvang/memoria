@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { Interviewer } from './components/Interviewer';
 import { FamilyDashboard } from './components/FamilyDashboard';
+import { Storybook } from './components/Storybook';
 
 function App() {
-  const [view, setView] = useState<'elder' | 'family'>('elder');
+  const [view, setView] = useState<'elder' | 'family' | 'storybook'>('elder');
 
   return (
     <div className="min-h-screen pt-12 pb-24 overflow-x-hidden">
@@ -14,8 +15,8 @@ function App() {
             <button
               onClick={() => setView('elder')}
               className={`px-8 py-2.5 rounded-xl font-bold transition-all duration-300 flex items-center gap-2 ${view === 'elder'
-                  ? 'bg-gold text-midnight shadow-lg shadow-gold/20'
-                  : 'text-silver/40 hover:text-white hover:bg-white/5'
+                ? 'bg-gold text-midnight shadow-lg shadow-gold/20'
+                : 'text-silver/40 hover:text-white hover:bg-white/5'
                 }`}
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -25,9 +26,9 @@ function App() {
             </button>
             <button
               onClick={() => setView('family')}
-              className={`px-8 py-2.5 rounded-xl font-bold transition-all duration-300 flex items-center gap-2 ${view === 'family'
-                  ? 'bg-gold text-midnight shadow-lg shadow-gold/20'
-                  : 'text-silver/40 hover:text-white hover:bg-white/5'
+              className={`px-8 py-2.5 rounded-xl font-bold transition-all duration-300 flex items-center gap-2 ${view === 'family' || view === 'storybook'
+                ? 'bg-gold text-midnight shadow-lg shadow-gold/20'
+                : 'text-silver/40 hover:text-white hover:bg-white/5'
                 }`}
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -38,17 +39,21 @@ function App() {
           </div>
 
           <h1 className="text-6xl md:text-9xl font-display text-gradient mb-8 italic">
-            {view === 'elder' ? 'Memoria' : 'Review Hub'}
+            {view === 'elder' ? 'Memoria' : (view === 'family' ? 'Review Hub' : 'Audible Storybook')}
           </h1>
           <p className="text-xl md:text-3xl text-silver/30 font-light tracking-widest italic reveal-2">
             {view === 'elder'
               ? "Your stories are treasures. Let's preserve them together."
-              : "Help refine your family's life story. Approve recent captures below."}
+              : (view === 'family'
+                ? "Help refine your family's life story. Approve recent captures below."
+                : "A journey through shared memories and original voices.")}
           </p>
         </header>
 
         <main className="relative z-10">
-          {view === 'elder' ? <Interviewer /> : <FamilyDashboard />}
+          {view === 'elder' && <Interviewer />}
+          {view === 'family' && <FamilyDashboard onOpenStorybook={() => setView('storybook')} />}
+          {view === 'storybook' && <Storybook onBack={() => setView('family')} />}
         </main>
       </div>
     </div>
