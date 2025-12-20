@@ -270,14 +270,14 @@ async def get_memories(verified: bool = True):
             era = "vintage"
             
     return {
-        "fragments": [{"id": f[4] if len(f)>4 else None, "category": f[0], "content": f[1], "context": f[2]} for f in fragments],
+        "fragments": [{"id": f[4], "category": f[0], "content": f[1], "context": f[2], "audio_url": f[5]} for f in fragments],
         "era": era
     }
 
 @app.get("/fragments/pending")
 async def get_pending():
     fragments = database.get_pending_fragments()
-    return [{"id": f[0], "category": f[1], "content": f[2], "context": f[3]} for f in fragments]
+    return [{"id": f[0], "category": f[1], "content": f[2], "context": f[3], "audio_url": f[4]} for f in fragments]
 
 @app.post("/fragments/{fragment_id}/verify")
 async def verify_frag(fragment_id: int):
@@ -302,16 +302,18 @@ async def delete_frag(fragment_id: int):
 @app.get("/export")
 async def export_memoir(user_name: str = "User"):
     """
-    Generates and returns a PDF memoir from verified fragments.
+    Generates and returns a PDF memoir. Uses synthesized narrative if available.
     """
     fragments = database.get_all_fragments(verified_only=True)
-    if not fragments:
+    narrative = database.get_latest_synthesized_narrative()
+    
+    if not fragments and not narrative:
         raise HTTPException(status_code=400, detail="No memories to export.")
     
-    # Generate illustrations for each category (Phase 2 Enhancement)
+    # Generate illustrations for each category
     images = {}
     imagen = imagen_service.get_imagen_service()
-    if imagen:
+    if imagen and fragments:
         categories = set(f[0] for f in fragments)
         img_dir = "temp_images"
         if not os.path.exists(img_dir):
@@ -320,16 +322,14 @@ async def export_memoir(user_name: str = "User"):
         for cat in categories:
             img_path = os.path.join(img_dir, f"{cat.replace(' ', '_')}.png")
             if not os.path.exists(img_path):
-                # Simple prompt for the image
                 prompt = f"An illustration representing the theme of {cat} in a life story."
-                # We'll run this in a threadpool to not block the event loop if we had many, 
-                # but for now we'll do it sequentially for simplicity.
                 imagen.generate_image(prompt, img_path)
             images[cat] = img_path
 
     gen = memoir_generator.MemoirGenerator()
     try:
-        filepath = gen.generate(user_name, fragments, images=images)
+        # If narrative exists, we'll pass it to the generator
+        filepath = gen.generate(user_name, fragments, images=images, narrative=narrative)
         return FileResponse(
             filepath, 
             media_type='application/pdf', 
