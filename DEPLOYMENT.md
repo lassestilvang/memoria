@@ -1,70 +1,84 @@
-# Deploying Memoria to Google Cloud with GitHub Integration
+# Deploying Memoria to Google Cloud
 
-This guide focuses on deploying the **Backend (The Brain)** to **Google Cloud Run** using **Cloud Build** for continuous deployment when you push to GitHub.
+This guide covers deploying the **Backend (FastAPI)** to **Google Cloud Run** and the **Frontend (React/Vite)** to **Firebase Hosting**.
 
-## Prerequisites
+## 🚀 1. Backend Deployment (Cloud Run)
 
-1.  A Google Cloud Project.
-2.  Billing enabled.
-3.  A GitHub repository with this code pushed to it.
+The backend is configured to deploy automatically via **Cloud Build** when you push to GitHub.
 
-## Quick Setup (Cloud Build Trigger)
+### Step 1: Enable Google Cloud APIs
+Enable the following APIs in the [GCP Console](https://console.cloud.google.com/):
+- **Cloud Run Admin API**
+- **Cloud Build API**
+- **Artifact Registry API** (or Container Registry)
+- **Vertex AI API** (Required for RAG & Image Generation)
 
-This is the easiest way to connect GitHub to Google Cloud.
+### Step 2: Configure Cloud Build Trigger
+1.  Go to **Cloud Build** > **Triggers**.
+2.  Click **Create Trigger**.
+3.  **Name**: `deploy-memoria-backend`.
+4.  **Source**: Connect your GitHub repository.
+5.  **Branch**: `^main$` (or your default branch).
+6.  **Configuration**: Select `Cloud Build configuration file (yaml/json)`.
+7.  **Location**: `cloudbuild.yaml` (root directory).
 
-### 1. Enable APIs
-Go to the [Google Cloud Console](https://console.cloud.google.com/) and enable these APIs:
--   **Cloud Run Admin API**
--   **Cloud Build API**
--   **Artifact Registry API** (or Container Registry)
+### Step 3: Service Account Permissions
+The Cloud Build service account (`[PROJECT_NUMBER]@cloudbuild.gserviceaccount.com`) needs:
+- **Cloud Run Admin**
+- **Service Account User**
 
-### 2. Connect Repository
-1.  Go to the **Cloud Build** page in the Google Cloud Console.
-2.  Select **Triggers** from the left menu.
-3.  Click **Create Trigger**.
-4.  **Name**: `deploy-memoria-backend`
-5.  **Event**: Push to a branch.
-6.  **Source**: Select your **GitHub repository** (you will need to authenticate GitHub app).
-7.  **Branch**: `^main$` (or master).
-8.  **Configuration**: Select **Cloud Build configuration file (yaml/json)**.
-9.  **Location**: `cloudbuild.yaml` (I have created this file in your project root).
+### Step 4: Environment Variables (Post-Deployment)
+Once the first deployment succeeds:
+1.  Go to **Cloud Run** > `memoria-brain`.
+2.  Click **Edit & Deploy New Revision**.
+3.  Add under **Variables & Secrets**:
+    - `GOOGLE_CLOUD_PROJECT`: Your Project ID.
+    - `GOOGLE_CLOUD_LOCATION`: `us-central1`.
+4.  Click **Deploy**.
 
-### 3. Configure Service Account Permissions
-The Cloud Build service account needs permission to deploy to Cloud Run.
-1.  Go to **IAM & Admin** > **IAM**.
-2.  Find the service account ending in `@cloudbuild.gserviceaccount.com`.
-3.  Edit it and add the role: **Cloud Run Admin** and **Service Account User**.
+---
 
-### 4. Push & Deploy
-Now, commit and push your code to GitHub:
+## 🎨 2. Frontend Deployment (Firebase Hosting)
 
+Firebase Hosting is the recommended way to host the React frontend on GCP infrastructure.
+
+### Step 1: Install Firebase CLI
 ```bash
-git add .
-git commit -m "Setup deployment"
-git push origin main
+npm install -g firebase-tools
 ```
 
-Cloud Build will automatically:
-1.  Detect the push.
-2.  Build the Docker image using `backend/Dockerfile`.
-3.  Deploy it to Cloud Run service named `memoria-brain`.
+### Step 2: Initialize Firebase
+Run this in the **root directory**:
+```bash
+firebase init hosting
+```
+- **Project**: Select your GCP project.
+- **Public directory**: `frontend/dist`
+- **Configure as single-page app**: Yes
+- **Automatic builds with GitHub Actions**: Optional (recommended)
 
-## Post-Deployment Configuration
+### Step 3: Deploy
+```bash
+cd frontend
+npm install
+npm run build
+cd ..
+firebase deploy --only hosting
+```
 
-1.  **Get the URL**:
-    Go to **Cloud Run** in the console. You will see the `memoria-brain` service. Copy the URL (e.g., `https://memoria-brain-xyz123-uc.a.run.app`).
+---
 
-2.  **Environment Variables**:
-    In the Cloud Run Console:
-    -   Click on `memoria-brain`.
-    -   Click **Edit & Deploy New Revision**.
-    -   Go to the **Variables & Secrets** tab.
-    -   Add environment variables:
-        -   `GOOGLE_CLOUD_PROJECT`: Your Project ID.
-        -   `GOOGLE_CLOUD_LOCATION`: `us-central1`.
-    -   Click **Deploy**.
+## 🔗 3. Connecting ElevenLabs
 
-3.  **Update ElevenLabs**:
-    -   Go to your ElevenLabs Agent settings.
-    -   Update the **Custom LLM** URL to your new Cloud Run URL + `/chat`.
-    -   Example: `https://memoria-brain-xyz123-uc.a.run.app/chat`
+1.  Copy the **Cloud Run URL** from the Google Cloud Console.
+2.  Go to your **ElevenLabs Agent** settings.
+3.  Set the **Custom LLM URL** to: `[YOUR_CLOUD_RUN_URL]/chat`.
+4.  Ensure the frontend `.env` (or environment variables in CI/CD) has the correct `VITE_ELEVEN_LABS_AGENT_ID`.
+
+---
+
+## 🛠 Troubleshooting
+
+- **CORS Errors**: Ensure the backend `main.py` is configured to allow your frontend's production URL.
+- **Imagen/Vertex AI Errors**: Ensure the Cloud Run service account has the **Vertex AI User** role.
+- **Database**: Memoria currently uses SQLite. Note that Cloud Run filesystem is ephemeral. For production persistence, consider using **Google Cloud SQL** or **Firestore**.
