@@ -24,6 +24,7 @@ def init_db():
             content TEXT,
             context TEXT,
             audio_url TEXT,
+            image_url TEXT,
             embedding BLOB,
             is_verified BOOLEAN DEFAULT 0,
             FOREIGN KEY (session_id) REFERENCES sessions(id)
@@ -64,6 +65,8 @@ def init_db():
         cursor.execute("ALTER TABLE fragments ADD COLUMN is_verified BOOLEAN DEFAULT 0")
     if "audio_url" not in columns:
         cursor.execute("ALTER TABLE fragments ADD COLUMN audio_url TEXT")
+    if "image_url" not in columns:
+        cursor.execute("ALTER TABLE fragments ADD COLUMN image_url TEXT")
     
     conn.commit()
     conn.close()
@@ -75,13 +78,13 @@ def save_session(session_id):
     conn.commit()
     conn.close()
 
-def save_fragment(session_id, category, content, context="", embedding=None, audio_url=None):
+def save_fragment(session_id, category, content, context="", embedding=None, audio_url=None, image_url=None):
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute("""
-        INSERT INTO fragments (session_id, category, content, context, embedding, audio_url, is_verified) 
-        VALUES (?, ?, ?, ?, ?, ?, 0)
-    """, (session_id, category, content, context, embedding, audio_url))
+        INSERT INTO fragments (session_id, category, content, context, embedding, audio_url, image_url, is_verified) 
+        VALUES (?, ?, ?, ?, ?, ?, ?, 0)
+    """, (session_id, category, content, context, embedding, audio_url, image_url))
     conn.commit()
     conn.close()
 
@@ -99,9 +102,9 @@ def get_all_fragments(verified_only=True):
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     if verified_only:
-        cursor.execute("SELECT category, content, context, embedding, id, audio_url FROM fragments WHERE is_verified = 1")
+        cursor.execute("SELECT category, content, context, embedding, id, audio_url, image_url FROM fragments WHERE is_verified = 1")
     else:
-        cursor.execute("SELECT category, content, context, embedding, id, is_verified, audio_url FROM fragments")
+        cursor.execute("SELECT category, content, context, embedding, id, is_verified, audio_url, image_url FROM fragments")
     rows = cursor.fetchall()
     conn.close()
     return rows
@@ -109,7 +112,7 @@ def get_all_fragments(verified_only=True):
 def get_pending_fragments():
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
-    cursor.execute("SELECT id, category, content, context, audio_url FROM fragments WHERE is_verified = 0")
+    cursor.execute("SELECT id, category, content, context, audio_url, image_url FROM fragments WHERE is_verified = 0")
     rows = cursor.fetchall()
     conn.close()
     return rows
@@ -135,6 +138,13 @@ def delete_fragment(fragment_id):
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute("DELETE FROM fragments WHERE id = ?", (fragment_id,))
+    conn.commit()
+    conn.close()
+
+def update_fragment_image(fragment_id, image_url):
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("UPDATE fragments SET image_url = ? WHERE id = ?", (image_url, fragment_id))
     conn.commit()
     conn.close()
 
