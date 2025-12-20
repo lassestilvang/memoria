@@ -99,9 +99,9 @@ def get_all_fragments(verified_only=True):
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     if verified_only:
-        cursor.execute("SELECT category, content, context, embedding, id FROM fragments WHERE is_verified = 1")
+        cursor.execute("SELECT category, content, context, embedding, id, audio_url FROM fragments WHERE is_verified = 1")
     else:
-        cursor.execute("SELECT category, content, context, embedding, id, is_verified FROM fragments")
+        cursor.execute("SELECT category, content, context, embedding, id, is_verified, audio_url FROM fragments")
     rows = cursor.fetchall()
     conn.close()
     return rows
@@ -109,7 +109,7 @@ def get_all_fragments(verified_only=True):
 def get_pending_fragments():
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
-    cursor.execute("SELECT id, category, content, context FROM fragments WHERE is_verified = 0")
+    cursor.execute("SELECT id, category, content, context, audio_url FROM fragments WHERE is_verified = 0")
     rows = cursor.fetchall()
     conn.close()
     return rows
