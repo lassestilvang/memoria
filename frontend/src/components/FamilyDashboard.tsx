@@ -19,7 +19,6 @@ export const FamilyDashboard: React.FC<FamilyDashboardProps> = ({ onOpenStoryboo
     const [editingId, setEditingId] = useState<number | null>(null);
     const [editContent, setEditContent] = useState('');
     const [synthesizing, setSynthesizing] = useState(false);
-    const [uploadingId, setUploadingId] = useState<number | null>(null);
 
     const fetchPending = useCallback(async () => {
         setLoading(true);
@@ -78,7 +77,6 @@ export const FamilyDashboard: React.FC<FamilyDashboardProps> = ({ onOpenStoryboo
     };
 
     const handlePhotoUpload = async (id: number, file: File) => {
-        setUploadingId(id);
         const formData = new FormData();
         formData.append('file', file);
         try {
@@ -93,8 +91,6 @@ export const FamilyDashboard: React.FC<FamilyDashboardProps> = ({ onOpenStoryboo
             }
         } catch (err) {
             console.error("Photo upload failed", err);
-        } finally {
-            setUploadingId(null);
         }
     };
 
