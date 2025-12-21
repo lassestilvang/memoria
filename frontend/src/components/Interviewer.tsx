@@ -101,7 +101,10 @@ export const Interviewer: React.FC = () => {
     // Initial fetch
     useEffect(() => {
         const controller = new AbortController();
-        fetchMemories(controller.signal);
+        const initFetch = async () => {
+            await fetchMemories(controller.signal);
+        };
+        initFetch();
         return () => controller.abort();
     }, [fetchMemories]);
 
@@ -113,7 +116,9 @@ export const Interviewer: React.FC = () => {
         const poll = async () => {
             if (conversation.status === 'connected' || showSummary) {
                 await fetchMemories(controller.signal);
-                timeoutId = setTimeout(poll, 3000);
+                if (!controller.signal.aborted) {
+                    timeoutId = setTimeout(poll, 3000);
+                }
             }
         };
 
