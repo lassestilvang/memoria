@@ -99,13 +99,14 @@ export const Interviewer: React.FC = () => {
     // Poll for memories during session
     useEffect(() => {
         let interval: ReturnType<typeof setInterval> | undefined;
-        if (conversation.status === 'connected') {
+        if (conversation.status === 'connected' || showSummary) {
+            fetchMemories();
             interval = setInterval(fetchMemories, 3000);
         }
         return () => {
             if (interval) clearInterval(interval);
         };
-    }, [conversation.status, fetchMemories]);
+    }, [conversation.status, fetchMemories, showSummary]);
 
     const startConversation = async () => {
         setError(null);
