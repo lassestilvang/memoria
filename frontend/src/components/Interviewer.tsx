@@ -12,6 +12,7 @@ export const Interviewer: React.FC = () => {
     const [agentId, setAgentId] = useState(import.meta.env.VITE_ELEVENLABS_AGENT_ID || '');
     const [error, setError] = useState<string | null>(null);
     const [fragments, setFragments] = useState<Fragment[]>([]);
+    const [initialFragmentCount, setInitialFragmentCount] = useState(0);
     const [showSummary, setShowSummary] = useState(false);
     const [era, setEra] = useState<'modern' | 'vintage' | 'sepia'>('modern');
     const [seed, setSeed] = useState('');
@@ -83,34 +84,53 @@ export const Interviewer: React.FC = () => {
         },
     });
 
-    const fetchMemories = useCallback(async () => {
+    const fetchMemories = useCallback(async (signal?: AbortSignal) => {
         try {
-            const res = await fetch(`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000'}/memories`);
+            const res = await fetch(`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000'}/memories`, { signal });
             if (res.ok) {
                 const data = await res.json();
                 setFragments(data.fragments || []);
                 if (data.era) setEra(data.era);
             }
         } catch (err) {
+            if (err instanceof DOMException && err.name === 'AbortError') return;
             console.error("Failed to fetch memories", err);
         }
     }, []);
 
+    // Initial fetch
+    useEffect(() => {
+        const controller = new AbortController();
+        fetchMemories(controller.signal);
+        return () => controller.abort();
+    }, [fetchMemories]);
+
     // Poll for memories during session
     useEffect(() => {
-        let interval: ReturnType<typeof setInterval> | undefined;
+        let timeoutId: ReturnType<typeof setTimeout>;
+        const controller = new AbortController();
+
+        const poll = async () => {
+            if (conversation.status === 'connected' || showSummary) {
+                await fetchMemories(controller.signal);
+                timeoutId = setTimeout(poll, 3000);
+            }
+        };
+
         if (conversation.status === 'connected' || showSummary) {
-            fetchMemories();
-            interval = setInterval(fetchMemories, 3000);
+            poll();
         }
+
         return () => {
-            if (interval) clearInterval(interval);
+            controller.abort();
+            if (timeoutId) clearTimeout(timeoutId);
         };
     }, [conversation.status, fetchMemories, showSummary]);
 
     const startConversation = async () => {
         setError(null);
         setShowSummary(false);
+        setInitialFragmentCount(fragments.length); // Track starting point
         if (!agentId) {
             alert('Please provide an Agent ID');
             return;
