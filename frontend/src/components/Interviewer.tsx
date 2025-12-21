@@ -409,7 +409,7 @@ export const Interviewer: React.FC = () => {
                         <div className="space-y-4">
                             <h2 className="text-5xl md:text-6xl font-display text-gradient">Wonderful stories!</h2>
                             <p className="text-xl md:text-2xl text-silver/60 font-light max-w-sm mx-auto">
-                                We've safely stored {fragments.length} new treasures in your digital heirloom.
+                                We've safely stored {Math.max(0, fragments.length - initialFragmentCount)} new treasures in your digital heirloom.
                             </p>
                         </div>
                         <div className="flex flex-col sm:flex-row gap-4 pt-6">
