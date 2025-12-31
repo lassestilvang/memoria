@@ -1,3 +1,5 @@
+.firebase*
+
 # OS
 .DS_Store
 
