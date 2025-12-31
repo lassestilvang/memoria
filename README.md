@@ -2,6 +2,10 @@
 
 Memoria is a voice-first application designed to help elderly users preserve their life stories. It uses an empathetic AI interviewer to ask questions, listen to answers, and ask relevant follow-up questions, effectively acting as a personal biographer.
 
+### License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
 ## How it Works
 
 1.  **Voice Interface (ElevenLabs)**: The user speaks to an AI agent that converses in a warm, human-like voice.
